@@ -18,8 +18,7 @@ serve(async (req) => {
 
   if (!PROXY_TOKEN) {
     return new Response(JSON.stringify({ error: "Proxy not configured" }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -30,20 +29,24 @@ serve(async (req) => {
 
     if (action === "ai-search") {
       const { query } = params;
-      const prompt = `Eres un experto en viajes de esquí. El usuario busca: "${query}". Responde en JSON con un array de 3 recomendaciones de resorts de esquí. Cada una: { "resort": "nombre", "country": "país", "description": "2 líneas en español", "price_estimate": "$X,XXX USD", "highlights": ["a","b","c"], "skill_level": "todos/principiante/intermedio/avanzado", "best_for": "familias/parejas/aventureros", "image_query": "ski resort keyword for photo" }. SOLO JSON array.`;
-
       const res = await fetch(PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
         body: JSON.stringify({
           provider: "openai",
           endpoint: "/v1/chat/completions",
-          payload: { model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.7 },
+          payload: {
+            model: "gpt-4o-mini",
+            messages: [{
+              role: "user",
+              content: `Eres un experto en viajes de esquí. Busca: "${query}". Responde SOLO un JSON array de 3 resorts: [{"resort":"nombre","country":"país","description":"2 líneas español","price_estimate":"$X,XXX USD","highlights":["a","b","c"],"skill_level":"todos/principiante/intermedio/avanzado","best_for":"familias/parejas/aventureros"}]. Solo JSON, nada más.`
+            }],
+            temperature: 0.7
+          },
         }),
       });
-
       const data = await res.json();
       const content = data?.choices?.[0]?.message?.content || "[]";
       let results = [];
       try {
-        results = JSON.parse(content.replace(/
+        const cleaned = content.replace(/
