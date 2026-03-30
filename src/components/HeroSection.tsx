@@ -1,112 +1,123 @@
 // @ts-nocheck
 // src/components/HeroSection.tsx
+import { Search, Mountain, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { MapPin, Mountain, Calendar, Users, Search } from 'lucide-react';
 
 export default function HeroSection() {
-  const [origin, setOrigin] = useState('CDMX');
-  const [destination, setDestination] = useState('Whistler');
-  const [dates, setDates] = useState('27 de Mar - 4 de Abr');
-  const [guests, setGuests] = useState('2');
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
+  const [dates, setDates] = useState('');
+  const [guests, setGuests] = useState('');
 
   return (
-    <section className="relative min-h-[100vh] md:min-h-[90vh] flex flex-col items-center justify-center overflow-hidden">
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80')`,
+          backgroundImage: `url('https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=1920&q=80')`,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/40" />
+      {/* Gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0B1628]/70 via-[#0B1628]/40 to-[#0B1628]/80" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0B1628]/50 to-transparent" />
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 text-center pt-24 pb-12">
-        {/* Heading */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-2 text-shadow-lg leading-tight">
-          Diseña tu viaje de esquí ideal
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20 pb-16">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 mb-8">
+          <Mountain className="w-4 h-4 text-blue-400" />
+          <span className="text-white/90 text-sm font-medium">Temporada 2025–2026 · Reserva Abierta</span>
+        </div>
+
+        {/* Main headline */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-4 tracking-tight">
+          Tu Aventura en la
+          <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
+            Nieve Comienza Aquí
+          </span>
         </h1>
-        <p className="text-lg sm:text-xl md:text-2xl text-white/90 font-medium mb-8 md:mb-12 text-shadow">
-          Nosotros nos ocupamos del resto
+
+        {/* Subtitle */}
+        <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10">
+          Paquetes todo incluido a los mejores destinos de esquí del mundo.
+          Vuelos, hotel, forfait y más.
         </p>
 
         {/* Search bar */}
-        <div className="bg-white rounded-2xl shadow-2xl p-3 sm:p-4 mx-auto max-w-4xl">
+        <div
+          id="search"
+          className="bg-white/[0.08] backdrop-blur-xl border border-white/15 rounded-2xl p-3 max-w-4xl mx-auto mb-8"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {/* Saliendo de */}
-            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
-              <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <div className="text-left flex-1">
-                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Saliendo de</p>
-                <input
-                  type="text"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  className="w-full text-sm font-semibold text-gray-800 bg-transparent outline-none"
-                />
-              </div>
+            <div className="relative">
+              <label className="absolute -top-0.5 left-3 text-[10px] uppercase tracking-wider text-blue-300 font-semibold">
+                Saliendo de
+              </label>
+              <input
+                type="text"
+                placeholder="Ciudad de México"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-xl pt-5 pb-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+              />
             </div>
-
-            {/* Destino */}
-            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
-              <Mountain className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <div className="text-left flex-1">
-                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">¿A dónde quieres ir?</p>
-                <input
-                  type="text"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="w-full text-sm font-semibold text-gray-800 bg-transparent outline-none"
-                />
-              </div>
+            <div className="relative">
+              <label className="absolute -top-0.5 left-3 text-[10px] uppercase tracking-wider text-blue-300 font-semibold">
+                ¿A dónde?
+              </label>
+              <input
+                type="text"
+                placeholder="Whistler, Vail..."
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-xl pt-5 pb-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+              />
             </div>
-
-            {/* Fechas */}
-            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
-              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <div className="text-left flex-1">
-                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Fechas</p>
-                <input
-                  type="text"
-                  value={dates}
-                  onChange={(e) => setDates(e.target.value)}
-                  className="w-full text-sm font-semibold text-gray-800 bg-transparent outline-none"
-                />
-              </div>
+            <div className="relative">
+              <label className="absolute -top-0.5 left-3 text-[10px] uppercase tracking-wider text-blue-300 font-semibold">
+                Fechas
+              </label>
+              <input
+                type="text"
+                placeholder="Ene 15 – Ene 22"
+                value={dates}
+                onChange={(e) => setDates(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-xl pt-5 pb-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+              />
             </div>
-
-            {/* Huéspedes */}
-            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
-              <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <div className="text-left flex-1">
-                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Huéspedes</p>
-                <input
-                  type="text"
-                  value={guests}
-                  onChange={(e) => setGuests(e.target.value)}
-                  className="w-full text-sm font-semibold text-gray-800 bg-transparent outline-none"
-                />
-              </div>
+            <div className="relative">
+              <label className="absolute -top-0.5 left-3 text-[10px] uppercase tracking-wider text-blue-300 font-semibold">
+                Huéspedes
+              </label>
+              <input
+                type="text"
+                placeholder="2 adultos"
+                value={guests}
+                onChange={(e) => setGuests(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-xl pt-5 pb-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+              />
             </div>
-
-            {/* Buscar */}
-            <button className="bg-holaski-blue hover:bg-blue-700 text-white font-bold rounded-xl py-3 px-6 flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-[0.98]">
+            <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl px-6 py-3 flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5">
               <Search className="w-4 h-4" />
               Buscar
             </button>
           </div>
         </div>
 
-        {/* Quiz CTA */}
-        <div className="mt-6">
-          <p className="text-white/80 text-sm mb-3">
-            O responde 5 preguntas y crea tu viaje de esquí perfecto.
-          </p>
-          <button className="bg-white text-holaski-navy font-extrabold text-sm tracking-widest uppercase px-8 py-3 rounded-full hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
-            HAZ TEST
-          </button>
-        </div>
+        {/* AI Quiz CTA */}
+        <button className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 backdrop-blur-sm border border-blue-400/30 hover:border-blue-400/50 text-white rounded-full px-6 py-3 transition-all duration-300 hover:-translate-y-0.5">
+          <Sparkles className="w-4 h-4 text-blue-400 group-hover:text-cyan-300 transition-colors" />
+          <span className="font-medium text-sm">
+            ¿No sabes a dónde ir?{' '}
+            <span className="text-blue-400 group-hover:text-cyan-300 font-bold transition-colors">Usa AI</span>
+          </span>
+        </button>
       </div>
+
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#0B1628] to-transparent" />
     </section>
   );
 }
