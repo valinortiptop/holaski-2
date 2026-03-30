@@ -13,8 +13,8 @@ import ResortsPage from './pages/ResortsPage';
 import DashboardPage from './pages/DashboardPage';
 import AuthModal from './components/AuthModal';
 
-export const AppContext = createContext<any>(null);
-export const useApp = () => useContext(AppContext);
+export const AppCtx = createContext<any>(null);
+export const useApp = () => useContext(AppCtx);
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -23,17 +23,17 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) setShowAuth(false);
+    }).catch(() => {});
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setUser(s?.user || null);
+      if (s?.user) setShowAuth(false);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   return (
-    <AppContext.Provider value={{ user, showAuth, setShowAuth }}>
-      <div className="min-h-screen flex flex-col bg-slate-950">
+    <AppCtx.Provider value={{ user, showAuth, setShowAuth }}>
+      <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
         <main className="flex-1">
           <ErrorBoundary>
@@ -47,8 +47,8 @@ export default function App() {
         </main>
         <Footer />
         {showAuth && <AuthModal />}
-        <Toaster position="top-right" theme="dark" richColors />
+        <Toaster position="top-right" richColors />
       </div>
-    </AppContext.Provider>
+    </AppCtx.Provider>
   );
 }

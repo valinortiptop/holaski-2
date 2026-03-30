@@ -3,7 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
+  margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background: #ffffff;
+  color: #1a1a2e;
 }
