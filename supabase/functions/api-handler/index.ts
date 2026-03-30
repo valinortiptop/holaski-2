@@ -17,7 +17,7 @@ serve(async (req) => {
   const PROXY_TOKEN = Deno.env.get("VALINOR_PROXY_TOKEN");
 
   if (!PROXY_TOKEN) {
-    return new Response(JSON.stringify({ error: "Proxy token not configured" }), {
+    return new Response(JSON.stringify({ error: "Proxy not configured" }), {
       status: 503,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -29,45 +29,21 @@ serve(async (req) => {
     console.log("api-handler invoked, action:", action);
 
     if (action === "ai-search") {
-      const { origin, destination, dates, guests } = params;
-      const prompt = `Eres un experto en viajes de esquí. El usuario busca un viaje de esquí con estos datos:
-- Saliendo de: ${origin || "cualquier ciudad"}
-- Destino deseado: ${destination || "cualquier destino"}
-- Fechas: ${dates || "flexibles"}
-- Huéspedes: ${guests || "2 adultos"}
-
-Responde en JSON con un array de 3-4 recomendaciones. Cada recomendación debe tener:
-{
-  "resort": "nombre del resort",
-  "country": "país",
-  "description": "descripción breve de 2 líneas",
-  "price_estimate": "precio estimado en USD por persona",
-  "highlights": ["highlight1", "highlight2", "highlight3"],
-  "skill_level": "principiante/intermedio/avanzado/todos",
-  "best_for": "familias/parejas/aventureros/grupos"
-}
-
-Responde SOLO con el JSON array, sin texto adicional.`;
+      const { query } = params;
+      const prompt = `Eres un experto en viajes de esquí. El usuario busca: "${query}". Responde en JSON con un array de 3 recomendaciones de resorts de esquí. Cada una: { "resort": "nombre", "country": "país", "description": "2 líneas en español", "price_estimate": "$X,XXX USD", "highlights": ["a","b","c"], "skill_level": "todos/principiante/intermedio/avanzado", "best_for": "familias/parejas/aventureros", "image_query": "ski resort keyword for photo" }. SOLO JSON array.`;
 
       const res = await fetch(PROXY_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
-        },
+        headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
         body: JSON.stringify({
           provider: "openai",
           endpoint: "/v1/chat/completions",
-          payload: {
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-          },
+          payload: { model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.7 },
         }),
       });
 
       const data = await res.json();
       const content = data?.choices?.[0]?.message?.content || "[]";
-      let results;
+      let results = [];
       try {
-        const cleaned = content.replace(/
+        results = JSON.parse(content.replace(/
