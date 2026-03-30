@@ -12,3 +12,5 @@ body {
   background: #ffffff;
   color: #1a1a2e;
 }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
