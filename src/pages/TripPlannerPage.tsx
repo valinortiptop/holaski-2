@@ -1,104 +1,148 @@
 // @ts-nocheck
-// src/pages/TripPlannerPage.tsx
 import { useState } from 'react';
-import { Calendar, Users, MapPin, Sparkles, Send } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Sparkles, Calendar, Users, Target, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function TripPlannerPage() {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState({
     destination: '',
     dates: '',
     travelers: '2',
-    preferences: ''
+    level: 'intermediate',
+    budget: 'moderate'
   });
+  const [plan, setPlan] = useState<any>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success('¡Solicitud enviada! Un experto se contactará contigo en menos de 24h.');
+  const generatePlan = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('api-handler', {
+        body: { action: 'generate-package', ...config }
+      });
+      if (error) throw error;
+      setPlan(data);
+      setStep(3);
+    } catch (err) {
+      toast.error('Error al generar el plan');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="pt-32 pb-24 min-h-screen bg-[#0B1628]">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="bg-white/5 border border-white/10 rounded-[3rem] p-8 md:p-12 backdrop-blur-xl shadow-2xl">
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-8 h-8 text-blue-500" />
-            </div>
-            <h1 className="text-4xl font-bold mb-4">Diseña tu Viaje Perfecto</h1>
-            <p className="text-gray-400">Cuéntanos tus planes y nosotros nos encargamos del resto.</p>
+    <div className="pt-32 pb-20 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full mb-4">
+            <Sparkles className="w-3 h-3" /> Planificador IA
           </div>
+          <h1 className="text-4xl font-black">Tu viaje <span className="text-blue-400">a medida</span></h1>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-6">
-              <div className="relative">
-                <label className="text-sm font-bold text-gray-400 uppercase mb-2 block tracking-widest">¿A dónde quieres ir?</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5" />
-                  <input 
-                    type="text" 
-                    placeholder="Ej: Alpes Suizos, Colorado..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-blue-500 transition-colors"
-                    value={formData.destination}
-                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                    required
-                  />
-                </div>
+        {step === 1 && (
+          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-8 animate-fade-up">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/40">Destino Ideal</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Alpes, Andes..." 
+                  value={config.destination}
+                  onChange={e => setConfig({...config, destination: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px]"
+                />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-bold text-gray-400 uppercase mb-2 block tracking-widest">Fechas Estimadas</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5" />
-                    <input 
-                      type="text" 
-                      placeholder="Diciembre 2024"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-blue-500 transition-colors"
-                      value={formData.dates}
-                      onChange={(e) => setFormData({...formData, dates: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-bold text-gray-400 uppercase mb-2 block tracking-widest">Viajeros</label>
-                  <div className="relative">
-                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5" />
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-blue-500 transition-colors appearance-none"
-                      value={formData.travelers}
-                      onChange={(e) => setFormData({...formData, travelers: e.target.value})}
-                    >
-                      <option value="1">1 Persona</option>
-                      <option value="2">2 Personas</option>
-                      <option value="4">4 Personas</option>
-                      <option value="family">Grupo Familiar</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-400 uppercase mb-2 block tracking-widest">Preferencias Extras</label>
-                <textarea 
-                  rows={4}
-                  placeholder="Ej: Clases de esquí, transporte privado, hotel 5 estrellas..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                  value={formData.preferences}
-                  onChange={(e) => setFormData({...formData, preferences: e.target.value})}
-                ></textarea>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/40">Pasajeros</label>
+                <select 
+                  value={config.travelers}
+                  onChange={e => setConfig({...config, travelers: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px]"
+                >
+                  <option value="1">1 Persona</option>
+                  <option value="2">2 Personas</option>
+                  <option value="4">4 Personas</option>
+                  <option value="6">Grupo 6+</option>
+                </select>
               </div>
             </div>
-
             <button 
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-xl shadow-blue-600/30"
+              onClick={() => setStep(2)}
+              className="w-full bg-blue-600 py-4 rounded-xl font-bold transition-all min-h-[44px]"
             >
-              <Send className="w-5 h-5" /> Enviar Solicitud
+              Siguiente Paso
             </button>
-          </form>
-        </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-8 animate-fade-up">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/40">Nivel de Esquí</label>
+                <select 
+                  value={config.level}
+                  onChange={e => setConfig({...config, level: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px]"
+                >
+                  <option value="beginner">Principiante</option>
+                  <option value="intermediate">Intermedio</option>
+                  <option value="advanced">Avanzado</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/40">Presupuesto</label>
+                <select 
+                  value={config.budget}
+                  onChange={e => setConfig({...config, budget: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px]"
+                >
+                  <option value="budget">Económico</option>
+                  <option value="moderate">Moderado</option>
+                  <option value="luxury">Lujo</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setStep(1)} className="flex-1 bg-white/5 py-4 rounded-xl font-bold min-h-[44px]">Atrás</button>
+              <button 
+                onClick={generatePlan} 
+                disabled={loading}
+                className="flex-[2] bg-blue-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generar Propuesta'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && plan && (
+          <div className="space-y-6 animate-fade-up">
+            <div className="bg-blue-600/10 border border-blue-500/20 p-8 rounded-3xl text-center">
+              <CheckCircle2 className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">¡Propuesta Generada!</h2>
+              <p className="text-white/60">Basada en tus preferencias para {plan.resort_name}</p>
+            </div>
+            <div className="grid gap-4">
+              {/* Resumen del plan */}
+              <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold">Total Estimado</h3>
+                  <span className="text-2xl font-black text-blue-400">${plan.cost_breakdown?.total_per_person_usd} <span className="text-xs text-white/40">/persona</span></span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-white/50"><span>Hotel ({plan.hotel?.name})</span><span>${plan.cost_breakdown?.hotel}</span></div>
+                  <div className="flex justify-between text-sm text-white/50"><span>Ski Pass</span><span>${plan.cost_breakdown?.ski_pass}</span></div>
+                  <div className="flex justify-between text-sm text-white/50"><span>Equipos</span><span>${plan.cost_breakdown?.equipment}</span></div>
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setStep(1)} className="w-full border border-white/10 py-4 rounded-xl font-bold min-h-[44px]">Empezar de nuevo</button>
+          </div>
+        )}
       </div>
     </div>
   );

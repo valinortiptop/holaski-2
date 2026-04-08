@@ -1,82 +1,101 @@
 // @ts-nocheck
-// src/pages/ContactPage.tsx
-import { Mail, Phone, MapPin, Send, Instagram, Facebook, Youtube } from 'lucide-react';
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Mail, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ContactPage() {
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleContact = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      toast.success('¡Mensaje enviado con éxito!');
-      setLoading(false);
-    }, 1000);
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('api-handler', {
+        body: { action: 'send-contact', ...formData }
+      });
+      if (error) throw error;
+      setSent(true);
+      toast.success('Mensaje enviado correctamente');
+    } catch (err) {
+      toast.error('Error al enviar el mensaje');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
-    <div className="pt-32 pb-24 min-h-screen bg-[#0B1628]">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div>
-            <h1 className="text-5xl font-bold mb-6">Hablemos de tu <span className="text-blue-500">Aventura</span></h1>
-            <p className="text-gray-400 text-lg mb-12 leading-relaxed">
-              ¿Tienes dudas o quieres un presupuesto personalizado? Nuestro equipo de expertos está listo para ayudarte a crear el viaje de tus sueños.
-            </p>
+    <div className="pt-32 pb-20 px-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-black mb-4">Hablemos de tu <span className="text-blue-400">viaje</span></h1>
+          <p className="text-white/60">Expertos en nieve listos para ayudarte a planear cada detalle.</p>
+        </div>
 
-            <div className="space-y-8 mb-12">
-              {[
-                { icon: Mail, label: 'Email', value: 'hola@holaski.com' },
-                { icon: Phone, label: 'Teléfono', value: '+52 55 1234 5678' },
-                { icon: MapPin, label: 'Oficinas', value: 'CDMX, México' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center shrink-0">
-                    <item.icon className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-gray-500 uppercase tracking-widest">{item.label}</div>
-                    <div className="text-xl font-bold">{item.value}</div>
-                  </div>
-                </div>
-              ))}
+        <div className="grid md:grid-cols-2 gap-12">
+          <div className="space-y-8">
+            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
+              <Mail className="w-8 h-8 text-blue-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Email</h3>
+              <p className="text-white/40 text-sm">hola@holaski.com</p>
             </div>
-
-            <div className="flex gap-4">
-              {[Instagram, Facebook, Youtube].map((Icon, i) => (
-                <a key={i} href="#" className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-blue-600 transition-colors border border-white/10">
-                  <Icon className="w-6 h-6" />
-                </a>
-              ))}
+            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
+              <MessageSquare className="w-8 h-8 text-blue-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2">WhatsApp</h3>
+              <p className="text-white/40 text-sm">+56 9 1234 5678</p>
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-[3rem] p-8 md:p-12 backdrop-blur-xl shadow-2xl">
-            <form onSubmit={handleContact} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Nombre Completo</label>
-                  <input type="text" placeholder="Tu nombre" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" required />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Email</label>
-                  <input type="email" placeholder="tu@email.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" required />
-                </div>
+          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+            {sent ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold mb-2">¡Recibido!</h3>
+                <p className="text-white/50 mb-8">Te contactaremos en menos de 24 horas.</p>
+                <button onClick={() => setSent(false)} className="text-blue-400 text-sm font-bold underline">Enviar otro mensaje</button>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Mensaje</label>
-                <textarea rows={6} placeholder="¿En qué podemos ayudarte?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 resize-none" required></textarea>
-              </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              >
-                {loading ? 'Enviando...' : <><Send className="w-5 h-5" /> Enviar Mensaje</>}
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Nombre</label>
+                  <input 
+                    required
+                    type="text" 
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 transition-all min-h-[44px]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Email</label>
+                  <input 
+                    required
+                    type="email" 
+                    value={formData.email}
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 transition-all min-h-[44px]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Mensaje</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    value={formData.message}
+                    onChange={e => setFormData({...formData, message: e.target.value})}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 transition-all min-h-[44px]"
+                  />
+                </div>
+                <button 
+                  disabled={sending}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all min-h-[44px]"
+                >
+                  {sending ? 'Enviando...' : <><Send className="w-4 h-4" /> Enviar Mensaje</>}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
