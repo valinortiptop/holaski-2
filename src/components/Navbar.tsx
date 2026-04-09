@@ -14,70 +14,65 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => setIsOpen(false), [location]);
-
-  const navLinks = [
-    { name: 'Destinos', path: '/destinos' },
-    { name: 'Paquetes', path: '/paquetes' },
-    { name: 'Contacto', path: '/contacto' },
+  const links = [
+    { name: 'Destinos', href: '/destinos' },
+    { name: 'Paquetes', href: '/paquetes' },
+    { name: 'Planear Viaje', href: '/planear' },
+    { name: 'Contacto', href: '/contacto' },
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled || isOpen ? 'bg-navy-950/90 backdrop-blur-xl py-4 shadow-xl' : 'bg-transparent py-6'
-    }`}>
-      <div className="container mx-auto px-6 flex justify-between items-center">
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-navy-950/90 backdrop-blur-md py-4 border-b border-white/10' : 'bg-transparent py-6'}`}>
+      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform">
-            <Snowflake className="text-white w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black text-white tracking-tighter">HOLASKI</span>
+          <Snowflake className="w-8 h-8 text-blue-500 transition-transform group-hover:rotate-180 duration-500" />
+          <span className="text-2xl font-black tracking-tighter text-white italic">SNOW<span className="text-blue-500">TRAVEL</span></span>
         </Link>
 
-        {/* Desktop Nav */}
+        {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <Link 
-              key={link.path} 
-              to={link.path}
-              className={`font-bold transition-colors ${
-                location.pathname === link.path ? 'text-blue-400' : 'text-slate-300 hover:text-white'
-              }`}
+              key={link.name} 
+              to={link.href} 
+              className={`text-sm font-bold uppercase tracking-widest transition-colors ${location.pathname === link.href ? 'text-blue-500' : 'text-slate-300 hover:text-white'}`}
             >
               {link.name}
             </Link>
           ))}
           <Link 
-            to="/planear"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"
+            to="/planear" 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold text-sm tracking-widest transition-all hover:scale-105 active:scale-95"
           >
-            Planear Viaje
+            RESERVAR AHORA
           </Link>
         </div>
 
         {/* Mobile Toggle */}
         <button className="md:hidden text-white" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={32} /> : <Menu size={32} />}
+          {isOpen ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
         </button>
       </div>
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-navy-950 border-t border-white/5 p-6 flex flex-col gap-6 animate-in fade-in slide-in-from-top-4">
-          {navLinks.map((link) => (
+        <div className="md:hidden absolute top-full left-0 w-full bg-navy-950 border-b border-white/10 p-6 flex flex-col gap-6 animate-in slide-in-from-top duration-300">
+          {links.map((link) => (
             <Link 
-              key={link.path} 
-              to={link.path}
-              className="text-2xl font-black text-white"
+              key={link.name} 
+              to={link.href} 
+              onClick={() => setIsOpen(false)}
+              className="text-2xl font-black uppercase tracking-tighter text-white"
             >
               {link.name}
             </Link>
           ))}
           <Link 
-            to="/planear"
-            className="bg-blue-600 text-white text-center py-5 rounded-2xl font-black text-xl"
+            to="/planear" 
+            onClick={() => setIsOpen(false)}
+            className="bg-blue-600 text-white py-4 rounded-xl font-black text-center text-lg"
           >
-            Planear Viaje
+            RESERVAR AHORA
           </Link>
         </div>
       )}

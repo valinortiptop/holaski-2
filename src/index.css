@@ -4,13 +4,10 @@
 
 @layer base {
   body {
-    @apply bg-navy-900 text-slate-200 antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-navy-900 antialiased;
   }
 }
 
-@layer utilities {
-  .text-shadow {
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-  }
+.glass {
+  @apply backdrop-blur-xl bg-white/5 border border-white/10;
 }

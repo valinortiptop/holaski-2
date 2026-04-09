@@ -10,7 +10,7 @@ import ContactoPage from './pages/ContactoPage';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-navy-900 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-navy-900 text-white font-sans selection:bg-blue-500/30">
       <Navbar />
       <main>
         <Routes>

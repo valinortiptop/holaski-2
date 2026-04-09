@@ -1,96 +1,36 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
-
-export interface AISearchResult {
+// @ts-nocheck
+export interface Lead {
   id: string;
-  resort_name: string;
-  country: string;
-  region: string;
-  price_range_usd: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  highlights: string[];
-  rating: number;
-  image_url: string;
-  match_score: number;
-  why_it_matches: string;
+  created_at: string;
+  first_name: string;
+  email: string;
+  destination: string | null;
+  travel_dates: string | null;
+  passengers_adults: number;
+  passengers_children: number;
+  skill_level: string | null;
+  budget_range: string | null;
+  message: string | null;
+  status: 'new' | 'contacted' | 'qualified' | 'lost' | 'won';
 }
 
-export interface Database {
-  public: {
-    Tables: {
-      resorts: {
-        Row: {
-          id: string
-          name: string
-          country: string
-          region: string
-          description_es: string | null
-          description_en: string | null
-          difficulty: string
-          altitude_base_m: number | null
-          altitude_peak_m: number | null
-          total_runs: number | null
-          total_lifts: number | null
-          season_start: string | null
-          season_end: string | null
-          avg_snowfall_cm: number | null
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
-          avg_daily_cost_usd: number | null
-          highlights: string[] | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          country: string
-          region: string
-          description_es?: string | null
-          description_en?: string | null
-          difficulty: string
-          altitude_base_m?: number | null
-          altitude_peak_m?: number | null
-          total_runs?: number | null
-          total_lifts?: number | null
-          season_start?: string | null
-          season_end?: string | null
-          avg_snowfall_cm?: number | null
-          image_url?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          avg_daily_cost_usd?: number | null
-          highlights?: string[] | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          country?: string
-          region?: string
-          description_es?: string | null
-          description_en?: string | null
-          difficulty?: string
-          altitude_base_m?: number | null
-          altitude_peak_m?: number | null
-          total_runs?: number | null
-          total_lifts?: number | null
-          season_start?: string | null
-          season_end?: string | null
-          avg_snowfall_cm?: number | null
-          image_url?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          avg_daily_cost_usd?: number | null
-          highlights?: string[] | null
-          created_at?: string
-        }
-      }
-    }
-  }
+export interface Resort {
+  id: string;
+  name: string;
+  slug: string;
+  country: string;
+  region: string;
+  description: string;
+  stats: {
+    altitude: string;
+    slopes: string;
+    lifts: string;
+    difficulty: {
+      easy: number;
+      intermediate: number;
+      advanced: number;
+    };
+  };
+  image_url: string;
+  category: 'lux' | 'family' | 'party' | 'pro';
 }
