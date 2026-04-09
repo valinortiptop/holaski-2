@@ -10,18 +10,17 @@ export interface Resort {
   altitude: { base: number; peak: number };
   trails: { total: number; beginner: number; intermediate: number; advanced: number; expert: number };
   lifts: number;
-  skiableArea: number; // in hectares or km
-  snowReliability: number; // 1-5
+  skiableArea: number;
+  snowReliability: number;
   season: { start: string; end: string };
   bestMonths: string[];
   priceRange: { min: number; max: number };
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert' | 'all-levels';
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'all-levels';
   highlights: string[];
   nearbyAirports: { name: string; distance: string }[];
   image: string;
-  gallery: string[];
   rating: number;
-  continent: 'Europa' | 'Norteamérica' | 'Sudamérica' | 'Asia';
+  continent: string;
   features: string[];
   apresSkiRating: number;
   familyFriendly: boolean;
@@ -34,11 +33,11 @@ export interface TripPackage {
   tagline: string;
   description: string;
   duration: number;
-  resorts: string[]; // names or slugs
+  resortNames: string[];
   priceFrom: number;
   includes: string[];
   highlights: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'all-levels';
+  difficulty: string;
   image: string;
   bestFor: string[];
   season: string;

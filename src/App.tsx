@@ -1,26 +1,25 @@
 // @ts-nocheck
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import Resorts from './pages/Resorts';
-import ResortDetail from './pages/ResortDetail';
+import PlanearViajePage from './pages/PlanearViajePage';
 
-function App() {
+// Placeholder components for missing routes
+const HomePlaceholder = () => (
+  <div className="min-h-screen pt-32 text-center">
+    <h1 className="text-4xl font-bold">Bienvenido a HolaSki</h1>
+    <a href="/planear" className="text-blue-400 mt-4 block">Planear mi Viaje</a>
+  </div>
+);
+
+export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-white">
-        <Navbar />
+      <div className="min-h-screen bg-navy-900 text-slate-200">
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/resorts" element={<Resorts />} />
-          <Route path="/resorts/:slug" element={<ResortDetail />} />
+          <Route path="/" element={<HomePlaceholder />} />
+          <Route path="/planear" element={<PlanearViajePage />} />
+          <Route path="*" element={<HomePlaceholder />} />
         </Routes>
-        <Footer />
       </div>
     </Router>
   );
 }
-
-export default App;
-```
