@@ -1,8 +1,9 @@
 // src/pages/DashboardPage.tsx
-import { useApp } from '../App';
+import { useContext } from 'react';
+import { AppContext } from '../contexts/AppContext';
 
 export default function DashboardPage() {
-  const { user } = useApp();
+  const { user } = useContext(AppContext);
 
   if (!user) {
     return <div className="text-center py-20">Por favor inicia sesión para ver tus viajes.</div>;
