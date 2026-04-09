@@ -41,7 +41,7 @@ export default function Navbar() {
             ))}
           </div>
           <div className="hidden md:block">
-            <Link to="/planear" className="bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-sm font-bold transition-all text-white shadow-lg shadow-blue-600/20">
+            <Link to="/planear" className="bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg shadow-blue-600/20">
               Empezar
             </Link>
           </div>
@@ -51,7 +51,7 @@ export default function Navbar() {
         </div>
       </div>
       {open && (
-        <div className="md:hidden bg-[#0B1628]/95 backdrop-blur-xl border-t border-white/5 h-screen">
+        <div className="md:hidden bg-[#0B1628]/95 backdrop-blur-xl border-t border-white/5">
           <div className="px-4 py-6 space-y-2">
             {links.map(l => (
               <Link key={l.to} to={l.to} className={`block px-4 py-3 rounded-xl text-lg font-medium transition-all ${location.pathname === l.to ? 'bg-white/10 text-white' : 'text-white/60'}`}>
