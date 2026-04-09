@@ -1,17 +1,21 @@
 // src/components/AuthModal.tsx
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../App';
 import { toast } from 'sonner';
 
-export default function AuthModal() {
-  const { setShowAuth } = useApp();
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
-  const [loading, setLoading] = useState(false);
+interface AppContextType {
+  setShowAuth: (show: boolean) => void;
+}
 
-  const handle = async (e: any) => {
+export default function AuthModal() {
+  const { setShowAuth }: AppContextType = useApp();
+  const [email, setEmail] = useState<string>('');
+  const [pass, setPass] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const handle = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
