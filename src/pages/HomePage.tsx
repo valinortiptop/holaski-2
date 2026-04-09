@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AISearchBar from '../components/AISearchBar';
@@ -73,11 +73,33 @@ const getAISearchCacheKey = (query: string): string => {
   return `${CACHE_KEYS.AI_SEARCH}_${encodeURIComponent(query.toLowerCase().trim())}`;
 };
 
+// Debounce hook
+const useDebounce = (value: string, delay: number): string => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 export default function HomePage() {
   const [destinations, setDestinations] = useState(FALLBACK_DESTINATIONS);
   const [aiResults, setAiResults] = useState<any[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Debounce the search query with 500ms delay
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   useEffect(() => {
     (async () => {
@@ -107,8 +129,23 @@ export default function HomePage() {
     })();
   }, []);
 
-  const handleAISearch = useCallback(async (query: string) => {
+  // Effect to handle debounced search
+  useEffect(() => {
+    if (debouncedSearchQuery.trim()) {
+      performAISearch(debouncedSearchQuery);
+    }
+  }, [debouncedSearchQuery]);
+
+  const performAISearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
+
+    // Cancel previous request if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
 
     setAiLoading(true);
     setHasSearched(true);
@@ -129,17 +166,40 @@ export default function HomePage() {
       
       if (error) throw error;
       
+      // Check if request was aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+      
       const results = data?.results || [];
       setAiResults(results);
       
       // Cache the results with AI search duration
       setToCache(cacheKey, results, 'AI_SEARCH');
-    } catch (err) {
-      console.error('AI Search error:', err);
-      setAiResults([]);
+    } catch (err: any) {
+      // Don't log error if request was aborted
+      if (err.name !== 'AbortError') {
+        console.error('AI Search error:', err);
+        setAiResults([]);
+      }
     } finally {
-      setAiLoading(false);
+      if (!abortControllerRef.current?.signal.aborted) {
+        setAiLoading(false);
+      }
     }
+  }, []);
+
+  const handleAISearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   return (
