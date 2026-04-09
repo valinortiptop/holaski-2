@@ -3,42 +3,33 @@ export interface Resort {
   id: string;
   slug: string;
   name: string;
-  country: string;
   region: string;
+  country: string;
+  altitude_top: number;
+  altitude_base: number;
+  runs_total: number;
+  lifts_total: number;
+  difficulty_json: {
+    green: number;
+    blue: number;
+    red: number;
+    black: number;
+  };
   description: string;
-  longDescription: string;
-  altitude: { base: number; peak: number };
-  trails: { total: number; beginner: number; intermediate: number; advanced: number; expert: number };
-  lifts: number;
-  skiableArea: number;
-  snowReliability: number;
-  season: { start: string; end: string };
-  bestMonths: string[];
-  priceRange: { min: number; max: number };
-  difficulty: string;
-  highlights: string[];
-  nearbyAirports: { name: string; distance: string }[];
-  image: string;
-  rating: number;
-  continent: string;
-  features: string[];
-  apresSkiRating: number;
-  familyFriendly: boolean;
+  price_level: number; // 1-3
+  image_url: string;
+  gallery_urls: string[];
 }
 
-export interface TripPackage {
-  id: string;
-  slug: string;
-  name: string;
-  tagline: string;
-  description: string;
-  duration: number;
-  resortSlugs: string[];
-  priceFrom: number;
-  includes: string[];
-  highlights: string[];
-  difficulty: string;
-  image: string;
-  bestFor: string[];
-  season: string;
+export interface Lead {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  destination?: string;
+  travel_dates?: string;
+  passengers_adults?: number;
+  passengers_children?: number;
+  skill_level?: string;
+  budget_range?: string;
+  message?: string;
 }

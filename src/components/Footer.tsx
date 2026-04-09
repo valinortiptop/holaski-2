@@ -1,80 +1,97 @@
 // @ts-nocheck
 import { Link } from 'react-router-dom';
-import { Snowflake, Instagram, Facebook, Twitter, Mail, Phone } from 'lucide-react';
+import { Snowflake, Instagram, Facebook, Twitter, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    try {
+      const { error } = await supabase.from('newsletter_subs').insert({ email });
+      if (error) throw error;
+      setStatus('success');
+      setEmail('');
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+    }
+  };
+
   return (
-    <footer className="bg-navy-950 border-t border-white/5 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          <div className="space-y-4">
+    <footer className="bg-navy-950 pt-20 pb-10 border-t border-white/5">
+      <div className="container mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          <div className="space-y-6">
             <Link to="/" className="flex items-center gap-2">
-              <Snowflake className="w-8 h-8 text-blue-400" />
-              <span className="text-2xl font-bold tracking-tighter text-white">HOLA<span className="text-blue-400">SKI</span></span>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Snowflake className="text-white w-5 h-5" />
+              </div>
+              <span className="text-xl font-black text-white tracking-tighter">HOLASKI</span>
             </Link>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Tu agencia especializada en experiencias de esquí y snowboard en los mejores destinos del mundo. Expertos en viajes a medida para todos los niveles.
+            <p className="text-slate-400">
+              Transformamos el turismo de nieve en experiencias de vida inolvidables. Líderes en viajes personalizados a la montaña.
             </p>
+            <div className="flex gap-4">
+              {[Instagram, Facebook, Twitter].map((Icon, i) => (
+                <a key={i} href="#" className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all">
+                  <Icon size={20} />
+                </a>
+              ))}
+            </div>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-6">Explora</h4>
-            <ul className="space-y-3 text-sm text-slate-400">
-              <li><Link to="/destinos" className="hover:text-blue-400 transition-colors">Destinos</Link></li>
-              <li><Link to="/paquetes" className="hover:text-blue-400 transition-colors">Paquetes</Link></li>
-              <li><Link to="/planear-viaje" className="hover:text-blue-400 transition-colors">Planear Viaje</Link></li>
-              <li><Link to="/contacto" className="hover:text-blue-400 transition-colors">Blog de Nieve</Link></li>
+            <h4 className="text-white font-bold mb-6">Explorar</h4>
+            <ul className="space-y-4">
+              <li><Link to="/destinos" className="text-slate-400 hover:text-blue-400 transition-colors">Destinos</Link></li>
+              <li><Link to="/paquetes" className="text-slate-400 hover:text-blue-400 transition-colors">Paquetes</Link></li>
+              <li><Link to="/planear" className="text-slate-400 hover:text-blue-400 transition-colors">Planear Viaje</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-6">Contacto</h4>
-            <ul className="space-y-4 text-sm text-slate-400">
-              <li className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-blue-400" />
-                <span>hola@holaski.com</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-blue-400" />
-                <span>+34 900 123 456</span>
-              </li>
-              <li className="pt-2 flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center hover:bg-blue-600 transition-colors text-white">
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center hover:bg-blue-600 transition-colors text-white">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center hover:bg-blue-600 transition-colors text-white">
-                  <Twitter className="w-5 h-5" />
-                </a>
-              </li>
+            <h4 className="text-white font-bold mb-6">Soporte</h4>
+            <ul className="space-y-4">
+              <li><Link to="/contacto" className="text-slate-400 hover:text-blue-400 transition-colors">Contacto</Link></li>
+              <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Términos y Condiciones</a></li>
+              <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Política de Privacidad</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-6">Suscríbete</h4>
-            <p className="text-slate-400 text-sm mb-4">Recibe ofertas exclusivas y reportes de nieve.</p>
-            <form className="flex gap-2">
-              <input
-                type="email"
+            <h4 className="text-white font-bold mb-6">Newsletter</h4>
+            <p className="text-slate-400 mb-4 text-sm">Recibe las mejores ofertas y reportes de nieve.</p>
+            <form onSubmit={handleSubscribe} className="relative">
+              <input 
+                type="email" 
+                required
                 placeholder="Tu email"
-                className="bg-navy-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-                OK
+              <button 
+                type="submit"
+                disabled={status === 'loading'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 p-2 rounded-lg text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                <Mail size={18} />
               </button>
             </form>
+            {status === 'success' && <p className="text-green-500 text-xs mt-2">¡Suscrito con éxito!</p>}
+            {status === 'error' && <p className="text-red-500 text-xs mt-2">Error al suscribir.</p>}
           </div>
         </div>
-
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-slate-500 text-xs">© 2024 HolaSki. Todos los derechos reservados.</p>
-          <div className="flex gap-6 text-xs text-slate-500">
-            <a href="#" className="hover:text-white transition-colors">Privacidad</a>
-            <a href="#" className="hover:text-white transition-colors">Términos</a>
-            <a href="#" className="hover:text-white transition-colors">Cookies</a>
-          </div>
+        
+        <div className="pt-8 border-t border-white/5 text-center">
+          <p className="text-slate-500 text-sm">
+            © {new Date().getFullYear()} HolaSki Travel Agency. Todos los derechos reservados.
+          </p>
         </div>
       </div>
     </footer>
