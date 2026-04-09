@@ -1,5 +1,5 @@
 // src/pages/SearchPage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Clock, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -21,17 +21,24 @@ export default function SearchPage() {
   const navigate = useNavigate();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const query = searchParams.get('q') || '';
-  const origin = searchParams.get('origin') || '';
-  const destination = searchParams.get('destination') || '';
-  const dates = searchParams.get('dates') || '';
-  const guests = searchParams.get('guests') || '2';
+  
+  const searchCriteria = useMemo(() => ({
+    query: searchParams.get('q') || '',
+    origin: searchParams.get('origin') || '',
+    destination: searchParams.get('destination') || '',
+    dates: searchParams.get('dates') || '',
+    guests: searchParams.get('guests') || '2'
+  }), [searchParams]);
 
-  useEffect(() => {
-    doSearch();
-  }, [query, destination]);
+  const { query, origin, destination, dates, guests } = searchCriteria;
 
-  const doSearch = async () => {
+  const doSearch = useCallback(async () => {
+    // Skip API call if no meaningful search criteria
+    if (!query.trim() && !destination.trim()) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data } = await supabase.functions.invoke('api-handler', {
@@ -58,7 +65,15 @@ export default function SearchPage() {
       })));
     }
     setLoading(false);
-  };
+  }, [query, destination, origin, dates, guests]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      doSearch();
+    }, 300); // Debounce API calls
+
+    return () => clearTimeout(timeoutId);
+  }, [doSearch]);
 
   const searchTitle = destination || query || 'los mejores destinos';
 
