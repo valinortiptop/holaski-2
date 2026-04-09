@@ -10,6 +10,43 @@ const REQUEST_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second
 
+// Environment variable validation
+interface RequiredEnvVars {
+  VALINOR_PROXY_URL?: string;
+  VALINOR_PROXY_TOKEN: string;
+}
+
+function validateEnvironmentVariables(): RequiredEnvVars {
+  const requiredVars: (keyof RequiredEnvVars)[] = ['VALINOR_PROXY_TOKEN'];
+  const missingVars: string[] = [];
+  
+  for (const varName of requiredVars) {
+    const value = Deno.env.get(varName);
+    if (!value) {
+      missingVars.push(varName);
+    }
+  }
+  
+  if (missingVars.length > 0) {
+    const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}`;
+    console.error(JSON.stringify({
+      level: 'FATAL',
+      message: errorMessage,
+      timestamp: new Date().toISOString(),
+      missingVars
+    }));
+    throw new Error(errorMessage);
+  }
+  
+  return {
+    VALINOR_PROXY_URL: Deno.env.get("VALINOR_PROXY_URL") || "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy",
+    VALINOR_PROXY_TOKEN: Deno.env.get("VALINOR_PROXY_TOKEN")!
+  };
+}
+
+// Validate environment variables on startup
+const ENV_VARS = validateEnvironmentVariables();
+
 // Structured logging utility
 interface LogContext {
   requestId: string;
@@ -141,18 +178,7 @@ serve(async (req) => {
     logContext.action = action;
     logInfo('Request body parsed', logContext, { action });
 
-    const PROXY_URL = Deno.env.get("VALINOR_PROXY_URL") || "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
-    const PROXY_TOKEN = Deno.env.get("VALINOR_PROXY_TOKEN");
-
-    if (!PROXY_TOKEN) {
-      logError("Configuration error: Missing PROXY_TOKEN", logContext);
-      return new Response(
-        JSON.stringify({ error: "Missing PROXY_TOKEN configuration", requestId }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const context = { PROXY_URL, PROXY_TOKEN, corsHeaders, logContext };
+    const context = { PROXY_URL: ENV_VARS.VALINOR_PROXY_URL, PROXY_TOKEN: ENV_VARS.VALINOR_PROXY_TOKEN, corsHeaders, logContext };
 
     logInfo('Routing to action handler', logContext, { action });
 
