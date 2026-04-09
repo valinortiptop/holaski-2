@@ -34,6 +34,216 @@ interface ChatMsg {
   multi?: boolean;
 }
 
+interface ChatMessageProps {
+  message: ChatMsg;
+  isLastOptions: boolean;
+  step: Step;
+  selExps: string[];
+  onPickDate: (label: string) => void;
+  onPickGuests: (label: string) => void;
+  onToggleExp: (value: string) => void;
+  onSubmitExps: () => void;
+  navigate: (path: string) => void;
+  onRestart: () => void;
+}
+
+interface OptionsListProps {
+  options: OptionItem[];
+  multi?: boolean;
+  step: Step;
+  selExps: string[];
+  onPickDate: (label: string) => void;
+  onPickGuests: (label: string) => void;
+  onToggleExp: (value: string) => void;
+  onSubmitExps: () => void;
+}
+
+interface ResultsListProps {
+  results: ResultItem[];
+  navigate: (path: string) => void;
+  onRestart: () => void;
+}
+
+function ChatMessage({ 
+  message, 
+  isLastOptions, 
+  step, 
+  selExps, 
+  onPickDate, 
+  onPickGuests, 
+  onToggleExp, 
+  onSubmitExps, 
+  navigate, 
+  onRestart 
+}: ChatMessageProps) {
+  return (
+    <div className={`flex gap-2.5 ${message.from === 'user' ? 'flex-row-reverse' : ''}`}>
+      {message.from === 'nieve' && (
+        <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+          <Sparkles className="w-3.5 h-3.5 text-white" />
+        </div>
+      )}
+      <div className={`max-w-[90%] ${message.from === 'user' ? 'ml-auto' : ''}`}>
+        {/* Text bubble */}
+        {message.kind === 'text' && (
+          <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${message.from === 'nieve' ? 'bg-white/[0.08] text-gray-100 rounded-tl-sm' : 'bg-blue-600 text-white rounded-tr-sm'}`}>
+            {message.text}
+          </div>
+        )}
+
+        {/* Options bubble */}
+        {message.kind === 'options' && (
+          <div>
+            <div className="bg-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-gray-100 mb-2.5">
+              {message.text}
+            </div>
+            {isLastOptions ? (
+              <OptionsList
+                options={message.options || []}
+                multi={message.multi}
+                step={step}
+                selExps={selExps}
+                onPickDate={onPickDate}
+                onPickGuests={onPickGuests}
+                onToggleExp={onToggleExp}
+                onSubmitExps={onSubmitExps}
+              />
+            ) : (
+              <div className="text-[10px] text-gray-500 italic px-1">Respondido ✓</div>
+            )}
+          </div>
+        )}
+
+        {/* Results bubble */}
+        {message.kind === 'results' && message.results && (
+          <div className="space-y-3">
+            <div className="bg-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-gray-100">
+              {message.text}
+            </div>
+            <ResultsList 
+              results={message.results} 
+              navigate={navigate} 
+              onRestart={onRestart} 
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OptionsList({ 
+  options, 
+  multi, 
+  step, 
+  selExps, 
+  onPickDate, 
+  onPickGuests, 
+  onToggleExp, 
+  onSubmitExps 
+}: OptionsListProps) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        {options.map(opt => {
+          const sel = multi && selExps.includes(opt.value);
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => {
+                if (step === 'dates') onPickDate(opt.label);
+                else if (step === 'guests') onPickGuests(opt.label);
+                else if (step === 'experience') onToggleExp(opt.value);
+              }}
+              className={`text-left p-2.5 rounded-xl border text-xs transition-all duration-200 ${sel ? 'bg-blue-600/25 border-blue-500/60 text-blue-200 shadow-md shadow-blue-500/10' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-blue-500/30 text-gray-300 hover:text-white'}`}
+            >
+              <div className="flex items-center gap-1.5">
+                {Icon && <Icon className={`w-3.5 h-3.5 shrink-0 ${sel ? 'text-blue-400' : 'text-gray-500'}`} />}
+                <span className="font-semibold">{opt.label}</span>
+              </div>
+              {opt.desc && <div className="text-[10px] text-gray-500 mt-0.5 ml-5">{opt.desc}</div>}
+            </button>
+          );
+        })}
+      </div>
+      {multi && step === 'experience' && (
+        <button
+          onClick={onSubmitExps}
+          disabled={selExps.length === 0}
+          className={`mt-2.5 w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 ${selExps.length > 0 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25' : 'bg-white/5 text-gray-500 cursor-not-allowed'}`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Buscar mi viaje ideal ({selExps.length})
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ResultsList({ results, navigate, onRestart }: ResultsListProps) {
+  return (
+    <>
+      <div className="space-y-2.5">
+        {results.map((r, i) => (
+          <div
+            key={i}
+            onClick={() => navigate('/destinos')}
+            className="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-blue-500/30 transition-all duration-300 cursor-pointer"
+          >
+            <div className="flex flex-col sm:flex-row">
+              <div className="sm:w-28 h-24 sm:h-auto shrink-0 relative overflow-hidden">
+                <img src={r.image} alt={r.resort} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute top-1.5 left-1.5 bg-black/50 backdrop-blur-sm rounded-lg px-1.5 py-0.5 flex items-center gap-1">
+                  <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                  <span className="text-[10px] font-bold text-white">{r.rating}</span>
+                </div>
+              </div>
+              <div className="p-3 flex-1 min-w-0 text-left">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-white text-sm truncate">{r.resort}</h4>
+                    <div className="flex items-center gap-1 text-[10px] text-blue-400 mt-0.5">
+                      <MapPin className="w-2.5 h-2.5" /> {r.country}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-blue-400">{r.price_from}</div>
+                    <div className="text-[10px] text-gray-500">{r.duration}</div>
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5 line-clamp-2">{r.description}</p>
+                {r.highlights && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {r.highlights.slice(0, 3).map((h, j) => (
+                      <span key={j} className="text-[9px] bg-blue-600/20 text-blue-300 px-1.5 py-0.5 rounded-full">{h}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => navigate('/destinos')}
+          className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20"
+        >
+          Ver Todos los Destinos
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onRestart}
+          className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
+        >
+          <RotateCcw className="w-4 h-4 text-gray-400" />
+        </button>
+      </div>
+    </>
+  );
+}
+
 const MONTHS: OptionItem[] = [
   { label: 'Dic 2025', value: 'dic-2025' },
   { label: 'Ene 2026', value: 'ene-2026' },
@@ -257,134 +467,19 @@ export default function AIChatAssistant({ onClose }: { onClose: () => void }) {
       {/* Messages */}
       <div className="h-[400px] overflow-y-auto px-4 py-4 space-y-4 scroll-smooth">
         {msgs.map(m => (
-          <div key={m.id} className={`flex gap-2.5 ${m.from === 'user' ? 'flex-row-reverse' : ''}`}>
-            {m.from === 'nieve' && (
-              <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
-              </div>
-            )}
-            <div className={`max-w-[90%] ${m.from === 'user' ? 'ml-auto' : ''}`}>
-              {/* Text bubble */}
-              {m.kind === 'text' && (
-                <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.from === 'nieve' ? 'bg-white/[0.08] text-gray-100 rounded-tl-sm' : 'bg-blue-600 text-white rounded-tr-sm'}`}>
-                  {m.text}
-                </div>
-              )}
-
-              {/* Options bubble */}
-              {m.kind === 'options' && (
-                <div>
-                  <div className="bg-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-gray-100 mb-2.5">
-                    {m.text}
-                  </div>
-                  {isLastOpts(m.id) ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        {m.options?.map(opt => {
-                          const sel = m.multi && selExps.includes(opt.value);
-                          const Icon = opt.icon;
-                          return (
-                            <button
-                              key={opt.value}
-                              onClick={() => {
-                                if (step === 'dates') pickDate(opt.label);
-                                else if (step === 'guests') pickGuests(opt.label);
-                                else if (step === 'experience') toggleExp(opt.value);
-                              }}
-                              className={`text-left p-2.5 rounded-xl border text-xs transition-all duration-200 ${sel ? 'bg-blue-600/25 border-blue-500/60 text-blue-200 shadow-md shadow-blue-500/10' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-blue-500/30 text-gray-300 hover:text-white'}`}
-                            >
-                              <div className="flex items-center gap-1.5">
-                                {Icon && <Icon className={`w-3.5 h-3.5 shrink-0 ${sel ? 'text-blue-400' : 'text-gray-500'}`} />}
-                                <span className="font-semibold">{opt.label}</span>
-                              </div>
-                              {opt.desc && <div className="text-[10px] text-gray-500 mt-0.5 ml-5">{opt.desc}</div>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {m.multi && step === 'experience' && (
-                        <button
-                          onClick={submitExps}
-                          disabled={selExps.length === 0}
-                          className={`mt-2.5 w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 ${selExps.length > 0 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25' : 'bg-white/5 text-gray-500 cursor-not-allowed'}`}
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          Buscar mi viaje ideal ({selExps.length})
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-gray-500 italic px-1">Respondido ✓</div>
-                  )}
-                </div>
-              )}
-
-              {/* Results bubble */}
-              {m.kind === 'results' && m.results && (
-                <div className="space-y-3">
-                  <div className="bg-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-gray-100">
-                    {m.text}
-                  </div>
-                  <div className="space-y-2.5">
-                    {m.results.map((r, i) => (
-                      <div
-                        key={i}
-                        onClick={() => navigate('/destinos')}
-                        className="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-blue-500/30 transition-all duration-300 cursor-pointer"
-                      >
-                        <div className="flex flex-col sm:flex-row">
-                          <div className="sm:w-28 h-24 sm:h-auto shrink-0 relative overflow-hidden">
-                            <img src={r.image} alt={r.resort} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                            <div className="absolute top-1.5 left-1.5 bg-black/50 backdrop-blur-sm rounded-lg px-1.5 py-0.5 flex items-center gap-1">
-                              <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-                              <span className="text-[10px] font-bold text-white">{r.rating}</span>
-                            </div>
-                          </div>
-                          <div className="p-3 flex-1 min-w-0 text-left">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <h4 className="font-bold text-white text-sm truncate">{r.resort}</h4>
-                                <div className="flex items-center gap-1 text-[10px] text-blue-400 mt-0.5">
-                                  <MapPin className="w-2.5 h-2.5" /> {r.country}
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <div className="text-sm font-bold text-blue-400">{r.price_from}</div>
-                                <div className="text-[10px] text-gray-500">{r.duration}</div>
-                              </div>
-                            </div>
-                            <p className="text-[11px] text-gray-400 mt-1.5 line-clamp-2">{r.description}</p>
-                            {r.highlights && (
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {r.highlights.slice(0, 3).map((h, j) => (
-                                  <span key={j} className="text-[9px] bg-blue-600/20 text-blue-300 px-1.5 py-0.5 rounded-full">{h}</span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate('/destinos')}
-                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20"
-                    >
-                      Ver Todos los Destinos
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={restart}
-                      className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
-                    >
-                      <RotateCcw className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <ChatMessage
+            key={m.id}
+            message={m}
+            isLastOptions={isLastOpts(m.id)}
+            step={step}
+            selExps={selExps}
+            onPickDate={pickDate}
+            onPickGuests={pickGuests}
+            onToggleExp={toggleExp}
+            onSubmitExps={submitExps}
+            navigate={navigate}
+            onRestart={restart}
+          />
         ))}
 
         {typing && (
@@ -393,4 +488,39 @@ export default function AIChatAssistant({ onClose }: { onClose: () => void }) {
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
             <div className="bg-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-blue-4
+              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
+              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* Input */}
+      {step === 'origin' && (
+        <div className="px-4 py-3 border-t border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitOrigin()}
+                placeholder="Ej: Madrid, Barcelona, México..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
+              />
+            </div>
+            <button
+              onClick={submitOrigin}
+              disabled={!input.trim()}
+              className="w-10 h-10 bg-blue-600 hover:bg-blue-500 disabled:bg-white/10 disabled:text-gray-500 text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
