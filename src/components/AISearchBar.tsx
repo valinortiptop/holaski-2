@@ -1,76 +1,53 @@
 // @ts-nocheck
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Search, Sparkles, Loader2 } from 'lucide-react';
 
-interface AISearchBarProps {
-  onSearch: (query: string) => void;
-  isLoading: boolean;
-}
+interface Props { onSearch: (q: string) => void; isLoading: boolean; }
 
-const TAGS = ['Familiar', 'Nieve polvo', 'Alpes', 'Economico', 'Japon', 'Principiante'];
+const TAGS = ['Alpes', 'Japón', 'Familiar', 'Nieve Polvo', 'Económico'];
 
-export default function AISearchBar({ onSearch, isLoading }: AISearchBarProps) {
+export default function AISearchBar({ onSearch, isLoading }: Props) {
   const [query, setQuery] = useState('');
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim() && !isLoading) onSearch(query.trim());
-  }, [query, isLoading, onSearch]);
-
-  const handleTag = useCallback((tag: string) => {
-    if (isLoading) return;
-    setQuery(tag);
-    onSearch(tag);
-  }, [isLoading, onSearch]);
+  };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-5">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <div className="flex justify-center">
-        <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] uppercase tracking-widest font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-          <Sparkles className="w-3.5 h-3.5" /> Potenciado por IA
-        </span>
+        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
+          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-[10px] uppercase tracking-widest font-bold text-blue-300">Inteligencia Artificial</span>
+        </div>
       </div>
-
       <form onSubmit={handleSubmit} className="relative group">
-        <div className="absolute -inset-1.5 bg-blue-500/20 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
-        <div className="relative flex items-center bg-[#0B1628]/80 backdrop-blur-2xl border border-white/15 rounded-2xl md:rounded-full p-2.5 focus-within:border-blue-400/40 transition-all shadow-2xl">
-          <div className="pl-4 pr-2 shrink-0">
+        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+        <div className="relative flex items-center bg-[#0B1628]/80 backdrop-blur-2xl border border-white/10 rounded-2xl md:rounded-full p-2 focus-within:border-blue-500/40 transition-all shadow-2xl">
+          <div className="pl-5 pr-2 hidden md:block">
             <Sparkles className="w-5 h-5 text-blue-400" />
           </div>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Esquiar en los Alpes con familia en febrero..."
-            className="flex-1 bg-transparent border-none text-white placeholder:text-white/30 py-3 md:py-4 text-base outline-none min-w-0"
-            disabled={isLoading}
+            placeholder="¿Dónde te gustaría esquiar?"
+            className="flex-1 bg-transparent border-none text-white placeholder:text-white/30 py-3 md:py-4 px-4 md:px-0 text-base outline-none min-w-0"
           />
           <button
             type="submit"
             disabled={isLoading || !query.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 text-white px-5 py-3 md:px-8 md:py-4 rounded-xl md:rounded-full font-bold transition-all flex items-center gap-2 shrink-0 shadow-xl shadow-blue-600/30"
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white h-12 md:h-14 px-6 md:px-10 rounded-xl md:rounded-full font-bold transition-all flex items-center gap-2 shadow-xl shadow-blue-600/30"
           >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <Search className="w-5 h-5" />
-                <span className="hidden md:inline">Buscar</span>
-              </>
-            )}
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-5 h-5" /><span className="hidden md:inline">Buscar</span></>}
           </button>
         </div>
       </form>
-
       <div className="flex flex-wrap items-center justify-center gap-2">
-        {TAGS.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => handleTag(tag)}
-            disabled={isLoading}
-            className="text-[11px] font-bold uppercase tracking-wider px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 transition-all text-white/50 hover:text-white disabled:opacity-40"
-          >
-            {tag}
+        {TAGS.map(t => (
+          <button key={t} onClick={() => { setQuery(t); onSearch(t); }} disabled={isLoading} className="text-[11px] font-bold uppercase tracking-wider px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all disabled:opacity-30">
+            {t}
           </button>
         ))}
       </div>

@@ -1,6 +1,5 @@
 ")) {
     const firstNewline = s.indexOf("\n")
-    if (firstNewline !== -1) {
-      s = s.substring(firstNewline + 1)
-    }
-    if (s.endsWith("
+    if (firstNewline !== -1) s = s.substring(firstNewline + 1)
+  }
+  if (s.endsWith("
