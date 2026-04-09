@@ -47,7 +47,9 @@ export default function SearchPage() {
           rating: r.rating, image_keyword: r.name
         })));
       }
-    } catch {
+    } catch (error) {
+      console.error('Error searching resorts:', error);
+      // Set fallback results even on error
       setResults(FALLBACK_RESORTS.slice(0, 4).map(r => ({
         resort: r.name, country: r.country, description: r.description,
         price_from: r.price_from, duration: '7 noches',
