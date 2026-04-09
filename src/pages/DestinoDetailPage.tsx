@@ -1,75 +1,84 @@
 // @ts-nocheck
-import { useParams, Link } from 'react-router-dom';
-import { MapPin, ArrowLeft, Calendar, Snowflake, Thermometer, Mountain, Users } from 'lucide-react';
-import { RESORTS } from '../data/resorts';
+import { useParams, Link } from 'react-router-dom'
+import { RESORTS } from '../data/resorts'
+import { ArrowLeft, Snowflake, Wind, MapPin, CheckCircle } from 'lucide-react'
 
 export default function DestinoDetailPage() {
-  const { slug } = useParams();
-  const resort = RESORTS.find(r => r.slug === slug);
+  const { slug } = useParams()
+  const resort = RESORTS.find(r => r.slug === slug)
 
-  if (!resort) return <div className="min-h-screen pt-32 text-center">Destino no encontrado</div>;
+  if (!resort) return <div className="min-h-screen bg-navy-900 flex items-center justify-center">Destino no encontrado</div>
 
   return (
     <div className="bg-navy-900 min-h-screen">
-      <div className="relative h-[70vh] w-full">
-        <img src={resort.image_url} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-transparent to-transparent" />
-        <div className="absolute top-32 left-6 md:left-20">
-          <Link to="/destinos" className="flex items-center gap-2 text-white font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md px-6 py-3 rounded-full hover:bg-white hover:text-black transition-all">
-            <ArrowLeft size={20} /> Volver
+      <div className="relative h-[70vh] w-full overflow-hidden">
+        <img src={resort.imageUrl} alt={resort.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-transparent to-transparent"></div>
+        <div className="absolute top-32 left-0 right-0 max-w-7xl mx-auto px-6">
+          <Link to="/destinos" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 font-bold bg-black/20 backdrop-blur-md px-4 py-2 rounded-full">
+            <ArrowLeft className="w-5 h-5" /> VOLVER A DESTINOS
           </Link>
+          <div className="flex items-center gap-3 text-blue-400 font-black tracking-widest text-sm uppercase mb-4">
+            <MapPin className="w-5 h-5" /> {resort.region}, {resort.country} {resort.flag}
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter mb-8">{resort.name}</h1>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 -mt-32 relative z-10 pb-24">
+      <div className="max-w-7xl mx-auto px-6 -mt-32 relative z-10 pb-32">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-12">
-            <div>
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-5xl">{resort.flag}</span>
-                <span className="px-4 py-1 bg-blue-600 rounded-full text-xs font-black uppercase tracking-[0.2em]">Destino Premium</span>
-              </div>
-              <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter mb-6">{resort.name}</h1>
-              <div className="flex items-center gap-2 text-slate-400 font-black uppercase tracking-widest">
-                <MapPin className="text-blue-500" /> {resort.region}, {resort.country}
+            <div className="bg-navy-950/80 backdrop-blur-xl border border-white/5 p-10 rounded-[2.5rem]">
+              <h2 className="text-3xl font-black text-white mb-6 uppercase tracking-tight">Sobre el Resort</h2>
+              <p className="text-slate-300 text-lg leading-relaxed mb-8">{resort.longDesc}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center p-6 bg-navy-900/50 rounded-2xl">
+                  <Snowflake className="w-8 h-8 text-blue-500 mx-auto mb-3" />
+                  <p className="text-white font-black text-2xl">{resort.slopesKm}km</p>
+                  <p className="text-slate-500 text-xs font-bold uppercase">Pistas</p>
+                </div>
+                <div className="text-center p-6 bg-navy-900/50 rounded-2xl">
+                  <Wind className="w-8 h-8 text-blue-500 mx-auto mb-3" />
+                  <p className="text-white font-black text-2xl">{resort.altitudeTop}m</p>
+                  <p className="text-slate-500 text-xs font-bold uppercase">Cima</p>
+                </div>
+                {/* Add more stats... */}
               </div>
             </div>
 
-            <p className="text-xl text-slate-300 leading-relaxed max-w-2xl">
-              {resort.long_description}
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[
-                { icon: Mountain, label: 'Altitud Max', val: `${resort.altitude_top}m` },
-                { icon: Snowflake, label: 'Pistas', val: `${resort.slopes_km}km` },
-                { icon: Calendar, label: 'Temporada', val: resort.season },
-                { icon: Thermometer, label: 'Nieve', val: `${resort.snow_reliability}% ok` },
-              ].map((item, i) => (
-                <div key={i} className="bg-navy-950 p-6 rounded-[2rem] border border-white/5">
-                  <item.icon className="text-blue-500 mb-4" />
-                  <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{item.label}</div>
-                  <div className="text-white font-black text-lg">{item.val}</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-navy-950/80 p-10 rounded-[2.5rem] border border-white/5">
+                <h3 className="text-2xl font-black text-white mb-6 uppercase">Highlights</h3>
+                <ul className="space-y-4">
+                  {resort.highlights.map(h => (
+                    <li key={h} className="flex items-center gap-3 text-slate-300 font-medium">
+                      <CheckCircle className="w-5 h-5 text-blue-500" /> {h}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="bg-navy-950/80 p-10 rounded-[2.5rem] border border-white/5">
+                <h3 className="text-2xl font-black text-white mb-6 uppercase">Ideal para</h3>
+                <div className="flex flex-wrap gap-2">
+                  {resort.bestFor.map(b => (
+                    <span key={b} className="bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-sm font-bold border border-blue-500/20">{b}</span>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-[3rem] p-10 sticky top-32 text-navy-900">
-              <h3 className="text-3xl font-black uppercase tracking-tighter mb-6">Reserva tu Experiencia</h3>
-              <p className="text-slate-600 mb-8 font-medium">Desde hoteles 5* hasta clases privadas con campeones olímpicos.</p>
-              
-              <Link 
-                to="/planear" 
-                className="w-full bg-blue-600 hover:bg-navy-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest transition-all text-center block"
-              >
-                Solicitar Presupuesto
+            <div className="sticky top-32 bg-blue-600 p-10 rounded-[2.5rem] text-white">
+              <h3 className="text-3xl font-black mb-4">¿QUIERES IR A {resort.name.toUpperCase()}?</h3>
+              <p className="text-blue-100 mb-8 font-medium">Nuestros expertos diseñarán tu itinerario perfecto incluyendo vuelos, hotel y forfaits.</p>
+              <Link to="/planear" className="block w-full bg-white text-blue-600 text-center py-5 rounded-2xl font-black text-lg hover:bg-blue-50 transition-colors">
+                PEDIR PRESUPUESTO
               </Link>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

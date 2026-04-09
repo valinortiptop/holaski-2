@@ -1,17 +1,17 @@
 // @ts-nocheck
-import { Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import DestinosPage from './pages/DestinosPage';
-import DestinoDetailPage from './pages/DestinoDetailPage';
-import PaquetesPage from './pages/PaquetesPage';
-import PlanearViajePage from './pages/PlanearViajePage';
-import ContactoPage from './pages/ContactoPage';
+import { Routes, Route } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import Footer from './components/Footer'
+import HomePage from './pages/HomePage'
+import DestinosPage from './pages/DestinosPage'
+import DestinoDetailPage from './pages/DestinoDetailPage'
+import PaquetesPage from './pages/PaquetesPage'
+import PlanearViajePage from './pages/PlanearViajePage'
+import ContactoPage from './pages/ContactoPage'
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-navy-900 text-white font-sans">
+    <div style={{ minHeight: '100vh', backgroundColor: '#0B1628', color: 'white', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <Navbar />
       <main>
         <Routes>
@@ -25,5 +25,5 @@ export default function App() {
       </main>
       <Footer />
     </div>
-  );
+  )
 }
