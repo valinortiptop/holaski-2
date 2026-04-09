@@ -16,6 +16,16 @@ interface SearchResult {
   image_keyword?: string;
 }
 
+// Simple logging service
+const logger = {
+  error: (message: string, error?: any) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.error(message, error);
+    }
+    // In production, you could send to a logging service here
+  }
+};
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -55,7 +65,7 @@ export default function SearchPage() {
         })));
       }
     } catch (error) {
-      console.error('Error searching resorts:', error);
+      logger.error('Error searching resorts:', error);
       // Set fallback results even on error
       setResults(FALLBACK_RESORTS.slice(0, 4).map(r => ({
         resort: r.name, country: r.country, description: r.description,
