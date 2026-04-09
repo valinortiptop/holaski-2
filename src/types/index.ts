@@ -112,7 +112,7 @@ export interface TripPackage {
   transfers: TransferInfo;
   lessons: LessonsInfo;
   cost_breakdown: CostBreakdown;
-  highlights: string[];
+  highlights: readonly string[];
   best_for: string;
   weather_forecast: string;
 }
@@ -129,9 +129,9 @@ export interface WizardData {
 }
 
 export interface CurrencyRate {
-  code: string;
-  symbol: string;
-  name: string;
+  readonly code: string;
+  readonly symbol: string;
+  readonly name: string;
   rate: number;
 }
 
