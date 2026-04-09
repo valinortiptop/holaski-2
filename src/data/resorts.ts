@@ -15,7 +15,7 @@ export interface Resort {
   description: string;
   long_description: string;
   price_level: number;
-  category: 'luxury' | 'adventure' | 'family' | 'expert';
+  category: string;
   image_url: string;
   gallery: string[];
   highlights: string[];
@@ -39,15 +39,13 @@ export const RESORTS: Resort[] = [
     lifts_total: 180,
     difficulty: { green: 27, blue: 40, red: 36, black: 10 },
     description: 'El epítome del lujo alpino en el dominio esquiable más grande del mundo.',
-    long_description: 'Courchevel es sinónimo de lujo en los Alpes franceses. Situado en el corazón de Les 3 Vallées, el dominio esquiable más grande del mundo con más de 600 km de pistas, ofrece una experiencia sin igual.',
+    long_description: 'Courchevel es sinónimo de lujo en los Alpes franceses. Situado en el corazón de Les 3 Vallées, el dominio esquiable más grande del mundo con más de 600 km de pistas preparadas a la perfección.',
     price_level: 3,
     category: 'luxury',
     image_url: 'https://images.unsplash.com/photo-1544454673-890334812848?auto=format&fit=crop&q=80&w=1600',
-    gallery: [
-      'https://images.unsplash.com/photo-1544454673-890334812848?auto=format&fit=crop&q=80&w=800'
-    ],
+    gallery: ['https://images.unsplash.com/photo-1544454673-890334812848?auto=format&fit=crop&q=80&w=800'],
     highlights: ['Dominio más grande del mundo', 'Gastronomía Michelin'],
-    best_for: ['Lujo', 'Familias VIP'],
+    best_for: ['Lujo', 'Gastronomía'],
     snow_reliability: 85,
     season: 'Diciembre - Abril'
   },
@@ -69,11 +67,9 @@ export const RESORTS: Resort[] = [
     price_level: 3,
     category: 'luxury',
     image_url: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&q=80&w=1600',
-    gallery: [
-      'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&q=80&w=800'
-    ],
+    gallery: ['https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&q=80&w=800'],
     highlights: ['Esquí todo el año', 'Vista al Matterhorn'],
-    best_for: ['Todo el año', 'Parejas'],
+    best_for: ['Parejas', 'Fotografía'],
     snow_reliability: 95,
     season: 'Todo el año'
   }

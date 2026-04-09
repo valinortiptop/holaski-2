@@ -1,58 +1,48 @@
 // @ts-nocheck
 import { Link } from 'react-router-dom';
-import { Snowflake, Instagram, Facebook, Mail } from 'lucide-react';
+import { Snowflake, Instagram, Facebook, Twitter } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-navy-950 pt-20 pb-10 px-6 border-t border-white/5">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-        <div className="col-span-1 md:col-span-1">
-          <Link to="/" className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Snowflake className="text-white w-5 h-5" />
-            </div>
-            <span className="text-xl font-black tracking-tighter text-white">HOLA<span className="text-blue-500">SKI</span></span>
-          </Link>
-          <p className="text-slate-400 leading-relaxed mb-6">
-            Llevamos tus sueños a las cumbres más altas del mundo. Expertos en viajes de nieve de lujo y aventura.
-          </p>
-          <div className="flex gap-4">
-            <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 transition-colors text-white"><Instagram size={20} /></a>
-            <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 transition-colors text-white"><Facebook size={20} /></a>
-            <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 transition-colors text-white"><Mail size={20} /></a>
+    <footer className="bg-navy-950 pt-24 pb-12 border-t border-white/5">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Snowflake className="w-8 h-8 text-blue-500" />
+            <span className="text-2xl font-black tracking-tighter text-white uppercase">HolaSki</span>
           </div>
+          <p className="text-slate-400 leading-relaxed">Curando las mejores experiencias de esquí y snowboard en los destinos más exclusivos del planeta.</p>
         </div>
         
         <div>
-          <h4 className="text-white font-black mb-6 uppercase tracking-wider text-sm">Explora</h4>
+          <h4 className="text-white font-bold uppercase tracking-widest mb-6">Explora</h4>
           <ul className="space-y-4">
-            <li><Link to="/" className="text-slate-400 hover:text-white transition-colors">Inicio</Link></li>
-            <li><Link to="/planear" className="text-slate-400 hover:text-white transition-colors">Diseñar Viaje</Link></li>
+            <li><Link to="/destinos" className="text-slate-400 hover:text-blue-400 transition-colors">Destinos</Link></li>
+            <li><Link to="/paquetes" className="text-slate-400 hover:text-blue-400 transition-colors">Paquetes</Link></li>
+            <li><Link to="/planear" className="text-slate-400 hover:text-blue-400 transition-colors">Diseña tu viaje</Link></li>
           </ul>
         </div>
 
         <div>
-          <h4 className="text-white font-black mb-6 uppercase tracking-wider text-sm">Soporte</h4>
+          <h4 className="text-white font-bold uppercase tracking-widest mb-6">Compañía</h4>
           <ul className="space-y-4">
-            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Contacto</a></li>
-            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Preguntas Frecuentes</a></li>
-            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Política de Privacidad</a></li>
+            <li><Link to="/contacto" className="text-slate-400 hover:text-blue-400 transition-colors">Contacto</Link></li>
+            <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Sobre Nosotros</a></li>
+            <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Blog</a></li>
           </ul>
         </div>
 
-        <div>
-          <h4 className="text-white font-black mb-6 uppercase tracking-wider text-sm">Newsletter</h4>
-          <p className="text-slate-400 mb-4 text-sm">Recibe ofertas exclusivas y guías de viaje.</p>
-          <div className="flex gap-2">
-            <input type="email" placeholder="Tu email" className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 w-full text-white outline-none focus:border-blue-500" />
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">OK</button>
+        <div className="space-y-6">
+          <h4 className="text-white font-bold uppercase tracking-widest">Síguenos</h4>
+          <div className="flex gap-4">
+            <a href="#" className="w-12 h-12 rounded-xl bg-navy-900 flex items-center justify-center text-white hover:bg-blue-600 transition-all"><Instagram size={20} /></a>
+            <a href="#" className="w-12 h-12 rounded-xl bg-navy-900 flex items-center justify-center text-white hover:bg-blue-600 transition-all"><Facebook size={20} /></a>
+            <a href="#" className="w-12 h-12 rounded-xl bg-navy-900 flex items-center justify-center text-white hover:bg-blue-600 transition-all"><Twitter size={20} /></a>
           </div>
         </div>
       </div>
-      
-      <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
-        <p className="text-slate-500 text-sm">© 2024 HolaSki. Todos los derechos reservados.</p>
-        <p className="text-slate-500 text-sm">Diseñado para amantes de la nieve.</p>
+      <div className="max-w-7xl mx-auto px-6 pt-12 border-t border-white/5 text-center text-slate-500 text-sm">
+        <p>© 2024 HolaSki. Reservados todos los derechos.</p>
       </div>
     </footer>
   );

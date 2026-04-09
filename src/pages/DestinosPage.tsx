@@ -1,83 +1,65 @@
 // @ts-nocheck
-import { useState } from 'react';
-import { Search, Filter, Snowflake, Trophy, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MapPin, Snowflake, Wind, Activity } from 'lucide-react';
 import { RESORTS } from '../data/resorts';
-import ResortCard from '../components/ResortCard';
 
 export default function DestinosPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-
-  const filteredResorts = RESORTS.filter(resort => {
-    const matchesSearch = resort.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          resort.country.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = activeFilter === 'all' || resort.category === activeFilter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const categories = [
-    { id: 'all', label: 'Todos', icon: Snowflake },
-    { id: 'lux', label: 'Lujo VIP', icon: Trophy },
-    { id: 'pro', label: 'Expertos', icon: Snowflake },
-    { id: 'family', label: 'Familiar', icon: Users },
-  ];
-
   return (
-    <div className="min-h-screen bg-navy-900 pt-32 pb-20">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-20">
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-6 uppercase tracking-tighter">
-            EXPLORA EL <span className="text-blue-500">MUNDO</span>
-          </h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-            Desde los glaciares suizos hasta la nieve polvo de Hokkaido. Seleccionamos solo lo mejor de cada continente.
-          </p>
+    <div className="min-h-screen bg-navy-900 pt-32 pb-24 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="max-w-3xl mb-16">
+          <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-8">Nuestros<br />Destinos</h1>
+          <p className="text-xl text-slate-400">Desde los Alpes franceses hasta el polvo de Hokkaido, hemos seleccionado los resorts más espectaculares del mundo.</p>
         </div>
 
-        {/* Search and Filter */}
-        <div className="flex flex-col md:flex-row gap-6 mb-16">
-          <div className="flex-grow relative">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Busca por resort o país..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-navy-950/50 border border-white/10 rounded-2xl py-5 pl-16 pr-6 text-white text-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            />
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveFilter(cat.id)}
-                className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${
-                  activeFilter === cat.id 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                }`}
-              >
-                <cat.icon className="w-5 h-5" />
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {RESORTS.map((resort) => (
+            <Link 
+              key={resort.id} 
+              to={`/destinos/${resort.slug}`}
+              className="group bg-navy-950/50 rounded-[3rem] overflow-hidden border border-white/5 hover:border-blue-500/50 transition-all duration-500"
+            >
+              <div className="aspect-[16/10] overflow-hidden">
+                <img src={resort.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              </div>
+              <div className="p-10">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-3xl font-black text-white uppercase mb-2">{resort.name}</h3>
+                    <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-xs tracking-widest">
+                      <MapPin size={14} className="text-blue-500" /> {resort.region}, {resort.country}
+                    </div>
+                  </div>
+                  <span className="text-3xl">{resort.flag}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Snowflake size={16} className="text-blue-500" />
+                    <span className="text-sm font-bold">{resort.slopes_km}km pistas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Activity size={16} className="text-blue-500" />
+                    <span className="text-sm font-bold">{resort.altitude_top}m altura</span>
+                  </div>
+                </div>
 
-        {/* Results Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredResorts.map(resort => (
-            <ResortCard key={resort.id} resort={resort} />
+                <p className="text-slate-400 mb-10 line-clamp-2 leading-relaxed">
+                  {resort.description}
+                </p>
+
+                <div className="flex items-center justify-between pt-8 border-t border-white/5">
+                  <span className="text-blue-400 font-black uppercase tracking-widest text-xs">Ver detalles</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((s) => (
+                      <div key={s} className={`w-1.5 h-1.5 rounded-full ${s <= resort.price_level ? 'bg-blue-500' : 'bg-white/10'}`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Link>
           ))}
         </div>
-
-        {filteredResorts.length === 0 && (
-          <div className="text-center py-40">
-            <Snowflake className="w-16 h-16 text-slate-700 mx-auto mb-6" />
-            <h3 className="text-2xl font-bold text-white mb-2">No se encontraron destinos</h3>
-            <p className="text-slate-500">Prueba ajustando tus filtros de búsqueda.</p>
-          </div>
-        )}
       </div>
     </div>
   );
