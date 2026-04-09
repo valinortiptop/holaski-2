@@ -18,23 +18,34 @@ const FEATURES = [
   { icon: Users, title: 'Soporte 24/7', desc: 'Asistencia especializada en cada paso de tu viaje.' },
 ];
 
-// Cache configuration
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const DESTINATION_CACHE_KEY = 'destinations_cache';
-const AI_SEARCH_CACHE_KEY = 'ai_search_cache';
+// Cache configuration with different durations based on content type
+const CACHE_DURATIONS = {
+  STATIC_DESTINATIONS: 24 * 60 * 60 * 1000, // 24 hours for relatively stable destination data
+  AI_SEARCH: 15 * 60 * 1000, // 15 minutes for AI search results
+  DYNAMIC_CONTENT: 5 * 60 * 1000, // 5 minutes for highly dynamic content
+  USER_SPECIFIC: 2 * 60 * 1000, // 2 minutes for user-specific data
+};
+
+const CACHE_KEYS = {
+  DESTINATIONS: 'destinations_cache',
+  AI_SEARCH: 'ai_search_cache',
+};
 
 interface CacheItem {
   data: any;
   timestamp: number;
+  type: keyof typeof CACHE_DURATIONS;
 }
 
-const getFromCache = (key: string): any | null => {
+const getFromCache = (key: string, contentType: keyof typeof CACHE_DURATIONS): any | null => {
   try {
     const cached = localStorage.getItem(key);
     if (!cached) return null;
     
-    const { data, timestamp }: CacheItem = JSON.parse(cached);
-    if (Date.now() - timestamp > CACHE_DURATION) {
+    const { data, timestamp, type }: CacheItem = JSON.parse(cached);
+    const cacheDuration = CACHE_DURATIONS[type] || CACHE_DURATIONS[contentType];
+    
+    if (Date.now() - timestamp > cacheDuration) {
       localStorage.removeItem(key);
       return null;
     }
@@ -45,11 +56,12 @@ const getFromCache = (key: string): any | null => {
   }
 };
 
-const setToCache = (key: string, data: any): void => {
+const setToCache = (key: string, data: any, contentType: keyof typeof CACHE_DURATIONS): void => {
   try {
     const cacheItem: CacheItem = {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      type: contentType
     };
     localStorage.setItem(key, JSON.stringify(cacheItem));
   } catch {
@@ -58,7 +70,7 @@ const setToCache = (key: string, data: any): void => {
 };
 
 const getAISearchCacheKey = (query: string): string => {
-  return `${AI_SEARCH_CACHE_KEY}_${encodeURIComponent(query.toLowerCase().trim())}`;
+  return `${CACHE_KEYS.AI_SEARCH}_${encodeURIComponent(query.toLowerCase().trim())}`;
 };
 
 export default function HomePage() {
@@ -70,8 +82,8 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        // Check cache first
-        const cachedDestinations = getFromCache(DESTINATION_CACHE_KEY);
+        // Check cache first with static content duration
+        const cachedDestinations = getFromCache(CACHE_KEYS.DESTINATIONS, 'STATIC_DESTINATIONS');
         if (cachedDestinations) {
           setDestinations(cachedDestinations);
           return;
@@ -87,7 +99,7 @@ export default function HomePage() {
           }));
           
           setDestinations(formattedDestinations);
-          setToCache(DESTINATION_CACHE_KEY, formattedDestinations);
+          setToCache(CACHE_KEYS.DESTINATIONS, formattedDestinations, 'STATIC_DESTINATIONS');
         }
       } catch { 
         /* stay fallback */ 
@@ -102,9 +114,9 @@ export default function HomePage() {
     setHasSearched(true);
 
     try {
-      // Check cache first
+      // Check cache first with AI search duration
       const cacheKey = getAISearchCacheKey(query);
-      const cachedResults = getFromCache(cacheKey);
+      const cachedResults = getFromCache(cacheKey, 'AI_SEARCH');
       if (cachedResults) {
         setAiResults(cachedResults);
         setAiLoading(false);
@@ -120,8 +132,8 @@ export default function HomePage() {
       const results = data?.results || [];
       setAiResults(results);
       
-      // Cache the results
-      setToCache(cacheKey, results);
+      // Cache the results with AI search duration
+      setToCache(cacheKey, results, 'AI_SEARCH');
     } catch (err) {
       console.error('AI Search error:', err);
       setAiResults([]);
