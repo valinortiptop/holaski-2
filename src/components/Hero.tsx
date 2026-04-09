@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/Hero.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

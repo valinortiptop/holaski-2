@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/lib/fallback.ts
 export const fallbackResorts = [
   { id: '1', name: 'Valle Nevado', country: 'Chile', region: 'south_america', description_es: 'El centro de esquí más grande de Sudamérica en los Andes chilenos.', description_en: 'The largest ski resort in South America in the Chilean Andes.', difficulty: 'intermediate', altitude_base_m: 2860, altitude_peak_m: 3670, total_runs: 40, total_lifts: 14, season_start: 'Junio', season_end: 'Octubre', avg_snowfall_cm: 350, image_url: 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800', latitude: -33.35, longitude: -70.25, avg_daily_cost_usd: 180, highlights: ['Heliesquí', 'Tres centros interconectados'] },

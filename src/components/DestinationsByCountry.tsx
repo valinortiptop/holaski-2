@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/DestinationsByCountry.tsx
 import { ChevronRight } from 'lucide-react';
 

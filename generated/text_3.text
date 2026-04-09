@@ -17,7 +17,7 @@
           payload: {
             model: "gpt-4o-mini",
             messages: [
-              { role: "system", content: "Eres el asistente AI de HolaSki, experto en viajes de esquí. Responde SIEMPRE en español. Sé amigable, entusiasta y útil. Ayuda a planificar viajes de esquí perfectos. Pregunta nivel, presupuesto, fechas y preferencias. Sugiere destinos concretos con precios estimados." },
+              { role: "system", content: "Eres el asistente AI de HolaSki, experto en viajes de esquí. Responde SIEMPRE en español. Sé amigable y entusiasta. Ayuda a planificar viajes de esquí perfectos. Sugiere destinos con precios estimados en USD." },
               ...messages
             ],
             temperature: 0.7
@@ -31,64 +31,20 @@
       });
     }
 
-    if (action === "send-contact-email") {
-      const { name, email, phone, message } = params;
+    if (action === "ai-resort-info") {
+      const { resortName, country } = params;
+      const prompt = `Dame información detallada del resort de esquí ${resortName} en ${country}. Responde SOLO un JSON: {"elevation_top":"X,XXXm","elevation_base":"X,XXXm","total_runs":120,"green_runs":30,"blue_runs":45,"black_runs":35,"double_black":10,"lifts":25,"terrain_acres":"5,000+","snowfall_annual":"300cm+","season":"Nov-Abr","night_skiing":true,"best_month":"Febrero","avg_temp":"-8°C","nearby_airport":"Aeropuerto (XYZ)","transfer_time":"2h","top_restaurants":["Rest1","Rest2","Rest3"],"top_activities":["Act1","Act2","Act3"],"tips":["tip1","tip2"]}. Solo JSON.`;
       const res = await fetch(PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
         body: JSON.stringify({
-          provider: "resend",
-          endpoint: "/emails",
-          payload: {
-            from: "HolaSki <onboarding@resend.dev>",
-            to: ["delivered@resend.dev"],
-            subject: `Nuevo contacto: ${name}`,
-            html: `<h2>Nuevo contacto de HolaSki</h2><p><b>Nombre:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Teléfono:</b> ${phone || "N/A"}</p><p><b>Mensaje:</b> ${message}</p><hr/><p style="font-size:11px;color:#999;"><a href="https://holaski.com/unsubscribe?email=${encodeURIComponent(email)}">Cancelar suscripción</a></p>`
-          },
+          provider: "openai",
+          endpoint: "/v1/chat/completions",
+          payload: { model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.5 },
         }),
       });
       const data = await res.json();
-      return new Response(JSON.stringify({ success: true, data }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "subscribe-newsletter") {
-      const { email } = params;
+      const content = data?.choices?.[0]?.message?.content || "{}";
+      let info = {};
       try {
-        await fetch(PROXY_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
-          body: JSON.stringify({
-            provider: "resend",
-            endpoint: "/emails",
-            payload: {
-              from: "HolaSki <onboarding@resend.dev>",
-              to: [email],
-              subject: "¡Bienvenido a HolaSki! 🎿",
-              html: `<h1>¡Bienvenido a HolaSki!</h1><p>Gracias por suscribirte. Recibirás ofertas exclusivas.</p><hr/><p style="font-size:11px;color:#999;"><a href="https://holaski.com/unsubscribe?email=${encodeURIComponent(email)}">Cancelar suscripción</a></p>`
-            },
-          }),
-        });
-      } catch (e) { console.log("Newsletter email failed:", e); }
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "unsubscribe") {
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    console.error("api-handler error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+        const cleaned = content.replace(/

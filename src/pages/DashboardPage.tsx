@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/pages/DashboardPage.tsx
 import { useApp } from '../App';
 

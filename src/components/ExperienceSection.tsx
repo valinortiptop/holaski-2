@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/ExperienceSection.tsx
 import { DollarSign, Headphones, CreditCard, Award, Mountain } from 'lucide-react';
 

@@ -1,5 +1,56 @@
-")) {
-    const firstNewline = s.indexOf("\n")
-    if (firstNewline !== -1) s = s.substring(firstNewline + 1)
-  }
-  if (s.endsWith("
+src/
+├── main.tsx                    # App entry
+├── App.tsx                     # Router + Error Boundaries
+├── lib/
+│   ├── supabase.ts             # Supabase client (env vars)
+│   └── i18n.ts                 # Internationalization context
+├── contexts/
+│   ├── AuthContext.tsx          # Auth state management
+│   └── LanguageContext.tsx      # Spanish/English toggle
+├── components/
+│   ├── layout/
+│   │   ├── Navbar.tsx           # Premium nav with mobile hamburger
+│   │   ├── Footer.tsx           # © dynamic year + unsubscribe link
+│   │   └── Layout.tsx           # Wrapper with nav + footer
+│   ├── ui/
+│   │   ├── LoadingSkeleton.tsx  # Skeleton loaders
+│   │   ├── ErrorBoundary.tsx    # Route-level error boundary
+│   │   ├── Button.tsx           # Styled button
+│   │   └── Card.tsx             # Reusable card component
+│   ├── wizard/
+│   │   ├── WizardFlow.tsx       # Multi-step wizard container
+│   │   ├── StepExperience.tsx   # Ski experience level
+│   │   ├── StepGroup.tsx        # Group size/dynamics
+│   │   ├── StepBudget.tsx       # Budget range selector
+│   │   ├── StepRegion.tsx       # Region preference
+│   │   └── StepResults.tsx      # AI-generated results display
+│   └── trip/
+│       ├── TripPackageCard.tsx   # Full package display component
+│       ├── FlightSection.tsx     # Flight details
+│       ├── HotelSection.tsx      # Hotel details
+│       ├── SkiPassSection.tsx    # Lift pass details
+│       ├── EquipmentSection.tsx  # Gear rental details
+│       └── CostBreakdown.tsx     # Transparent cost estimator
+├── pages/
+│   ├── HomePage.tsx             # Hero + CTA + featured resorts
+│   ├── WizardPage.tsx           # Smart Trip Wizard
+│   ├── ResultsPage.tsx          # Trip package results
+│   ├── DashboardPage.tsx        # User dashboard (saved trips)
+│   └── GroupPlanningPage.tsx    # Collaborative planning
+├── hooks/
+│   ├── useWizard.ts             # Wizard state management
+│   └── useTripPackage.ts        # Trip data fetching
+└── types/
+    └── index.ts                 # All TypeScript interfaces
+
+supabase/
+└── functions/
+    └── api-handler/
+        └── index.ts             # Single edge function for AI + email
+
+index.html                       # With any CDN links needed
+package.json
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+tsconfig.json

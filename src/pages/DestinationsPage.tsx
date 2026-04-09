@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Search, MapPin, Star } from 'lucide-react';
 import { fallbackResorts } from '../lib/fallback';

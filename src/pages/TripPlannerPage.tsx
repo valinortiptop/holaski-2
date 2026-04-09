@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Sparkles, Calendar, Users, Target, Loader2, CheckCircle2 } from 'lucide-react';

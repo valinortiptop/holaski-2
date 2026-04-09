@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/lib/i18n.ts
 export type Lang = 'es' | 'en';
 const d: Record<string, Record<Lang, string>> = {

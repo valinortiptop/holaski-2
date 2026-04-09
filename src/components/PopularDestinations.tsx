@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/PopularDestinations.tsx
 import { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';

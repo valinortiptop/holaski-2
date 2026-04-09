@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/pages/ResortsPage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';

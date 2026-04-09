@@ -1,0 +1,69 @@
+\n?/g, "").trim();
+        info = JSON.parse(cleaned);
+      } catch { info = {}; }
+      return new Response(JSON.stringify({ info }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "send-contact-email") {
+      const { name, email, phone, message } = params;
+      const res = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
+        body: JSON.stringify({
+          provider: "resend",
+          endpoint: "/emails",
+          payload: {
+            from: "HolaSki <onboarding@resend.dev>",
+            to: ["delivered@resend.dev"],
+            subject: `Nuevo contacto HolaSki: ${name}`,
+            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;"><h2 style="color:#2563eb;">Nuevo contacto de HolaSki</h2><p><strong>Nombre:</strong> ${name}</p><p><strong>Email:</strong> ${email}</p><p><strong>Teléfono:</strong> ${phone || "N/A"}</p><p><strong>Mensaje:</strong></p><p>${message}</p><hr/><p style="font-size:11px;color:#999;"><a href="https://holaski.com/unsubscribe?email=${encodeURIComponent(email)}">Cancelar suscripción</a></p></div>`
+          },
+        }),
+      });
+      const data = await res.json();
+      return new Response(JSON.stringify({ success: true, data }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "subscribe-newsletter") {
+      const { email } = params;
+      try {
+        await fetch(PROXY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
+          body: JSON.stringify({
+            provider: "resend",
+            endpoint: "/emails",
+            payload: {
+              from: "HolaSki <onboarding@resend.dev>",
+              to: [email],
+              subject: "¡Bienvenido a HolaSki! 🎿",
+              html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;"><h1 style="color:#2563eb;">¡Bienvenido a HolaSki!</h1><p>Gracias por suscribirte a nuestro newsletter.</p><p>Recibirás las mejores ofertas de viajes de esquí directamente en tu inbox.</p><hr/><p style="font-size:11px;color:#999;"><a href="https://holaski.com/unsubscribe?email=${encodeURIComponent(email)}">Cancelar suscripción</a></p></div>`
+            },
+          }),
+        });
+      } catch (e) { console.log("Newsletter email failed:", e); }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "unsubscribe") {
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Unknown action: " + action }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("api-handler error:", err);
+    return new Response(JSON.stringify({ error: "Internal error", details: String(err) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Plane, Hotel, Ticket, Briefcase, Zap } from 'lucide-react';
 
 export default function PackagesPage() {

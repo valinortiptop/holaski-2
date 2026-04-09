@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/data/resorts.ts
 export interface Resort {
   id: string;

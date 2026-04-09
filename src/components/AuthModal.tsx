@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/AuthModal.tsx
 import { useState } from 'react';
 import { X } from 'lucide-react';

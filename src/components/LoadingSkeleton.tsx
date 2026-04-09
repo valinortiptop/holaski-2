@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/LoadingSkeleton.tsx
 export function CardSkeleton() {
   return (

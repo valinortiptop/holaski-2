@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/contexts/LanguageContext.tsx
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { Language } from '../types';

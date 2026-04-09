@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/components/CTABanner.tsx
 import { ArrowRight, MessageCircle } from 'lucide-react';
 
