@@ -18,6 +18,49 @@ const FEATURES = [
   { icon: Users, title: 'Soporte 24/7', desc: 'Asistencia especializada en cada paso de tu viaje.' },
 ];
 
+// Cache configuration
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const DESTINATION_CACHE_KEY = 'destinations_cache';
+const AI_SEARCH_CACHE_KEY = 'ai_search_cache';
+
+interface CacheItem {
+  data: any;
+  timestamp: number;
+}
+
+const getFromCache = (key: string): any | null => {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    
+    const { data, timestamp }: CacheItem = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_DURATION) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const setToCache = (key: string, data: any): void => {
+  try {
+    const cacheItem: CacheItem = {
+      data,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(cacheItem));
+  } catch {
+    // Handle storage quota exceeded
+  }
+};
+
+const getAISearchCacheKey = (query: string): string => {
+  return `${AI_SEARCH_CACHE_KEY}_${encodeURIComponent(query.toLowerCase().trim())}`;
+};
+
 export default function HomePage() {
   const [destinations, setDestinations] = useState(FALLBACK_DESTINATIONS);
   const [aiResults, setAiResults] = useState<any[]>([]);
@@ -27,28 +70,58 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
+        // Check cache first
+        const cachedDestinations = getFromCache(DESTINATION_CACHE_KEY);
+        if (cachedDestinations) {
+          setDestinations(cachedDestinations);
+          return;
+        }
+
         const { data } = await supabase.from('ski_resorts').select('*').limit(3);
         if (data && data.length > 0) {
-          setDestinations(data.map((d: any) => ({
+          const formattedDestinations = data.map((d: any) => ({
             id: d.id, name: d.name, country: d.country,
             description: d.description_es || 'Destino de esquí excepcional.',
             image_url: d.image_url || 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800',
             rating: 4.5 + Math.random() * 0.5,
-          })));
+          }));
+          
+          setDestinations(formattedDestinations);
+          setToCache(DESTINATION_CACHE_KEY, formattedDestinations);
         }
-      } catch { /* stay fallback */ }
+      } catch { 
+        /* stay fallback */ 
+      }
     })();
   }, []);
 
   const handleAISearch = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+
     setAiLoading(true);
     setHasSearched(true);
+
     try {
+      // Check cache first
+      const cacheKey = getAISearchCacheKey(query);
+      const cachedResults = getFromCache(cacheKey);
+      if (cachedResults) {
+        setAiResults(cachedResults);
+        setAiLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('api-handler', {
         body: { action: 'ai-search', query },
       });
+      
       if (error) throw error;
-      setAiResults(data?.results || []);
+      
+      const results = data?.results || [];
+      setAiResults(results);
+      
+      // Cache the results
+      setToCache(cacheKey, results);
     } catch (err) {
       console.error('AI Search error:', err);
       setAiResults([]);
