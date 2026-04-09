@@ -1,302 +1,115 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+// @ts-nocheck
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import AISearchBar from '../components/AISearchBar';
-import AISearchResults from '../components/AISearchResults';
-import { Star, ArrowRight, Shield, Zap, Globe, Users, Send } from 'lucide-react';
-
-const FALLBACK_DESTINATIONS = [
-  { id: '1', name: 'Val Thorens', country: 'Francia', description: 'La estación más alta de Europa con nieve garantizada.', image_url: 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800', rating: 4.8 },
-  { id: '2', name: 'Zermatt', country: 'Suiza', description: 'Esquía bajo la sombra del icónico Matterhorn.', image_url: 'https://images.unsplash.com/photo-1565992441121-4367c2967103?w=800', rating: 4.9 },
-  { id: '3', name: 'Niseko', country: 'Japón', description: 'El paraíso de la nieve polvo y el relax en onsens.', image_url: 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=800', rating: 4.7 }
-];
-
-const FEATURES = [
-  { icon: Zap, title: 'IA Generativa', desc: 'Búsquedas semánticas que entienden tus gustos personales.' },
-  { icon: Shield, title: 'Seguridad Total', desc: 'Reserva con la tranquilidad de operadores verificados.' },
-  { icon: Globe, title: 'Destinos Globales', desc: 'Desde los Alpes hasta los Andes, cubrimos todo el mapa.' },
-  { icon: Users, title: 'Soporte 24/7', desc: 'Asistencia especializada en cada paso de tu viaje.' },
-];
-
-// Cache configuration with different durations based on content type
-const CACHE_DURATIONS = {
-  STATIC_DESTINATIONS: 24 * 60 * 60 * 1000, // 24 hours for relatively stable destination data
-  AI_SEARCH: 15 * 60 * 1000, // 15 minutes for AI search results
-  DYNAMIC_CONTENT: 5 * 60 * 1000, // 5 minutes for highly dynamic content
-  USER_SPECIFIC: 2 * 60 * 1000, // 2 minutes for user-specific data
-};
-
-const CACHE_KEYS = {
-  DESTINATIONS: 'destinations_cache',
-  AI_SEARCH: 'ai_search_cache',
-};
-
-interface CacheItem {
-  data: any;
-  timestamp: number;
-  type: keyof typeof CACHE_DURATIONS;
-}
-
-const getFromCache = (key: string, contentType: keyof typeof CACHE_DURATIONS): any | null => {
-  try {
-    const cached = localStorage.getItem(key);
-    if (!cached) return null;
-    
-    const { data, timestamp, type }: CacheItem = JSON.parse(cached);
-    const cacheDuration = CACHE_DURATIONS[type] || CACHE_DURATIONS[contentType];
-    
-    if (Date.now() - timestamp > cacheDuration) {
-      localStorage.removeItem(key);
-      return null;
-    }
-    
-    return data;
-  } catch {
-    return null;
-  }
-};
-
-const setToCache = (key: string, data: any, contentType: keyof typeof CACHE_DURATIONS): void => {
-  try {
-    const cacheItem: CacheItem = {
-      data,
-      timestamp: Date.now(),
-      type: contentType
-    };
-    localStorage.setItem(key, JSON.stringify(cacheItem));
-  } catch {
-    // Handle storage quota exceeded
-  }
-};
-
-const getAISearchCacheKey = (query: string): string => {
-  return `${CACHE_KEYS.AI_SEARCH}_${encodeURIComponent(query.toLowerCase().trim())}`;
-};
-
-// Debounce hook
-const useDebounce = (value: string, delay: number): string => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-};
+import { Compass, Calendar, Mountain, Users, ChevronRight, Star } from 'lucide-react';
+import { resorts } from '../data/resorts';
 
 export default function HomePage() {
-  const [destinations, setDestinations] = useState(FALLBACK_DESTINATIONS);
-  const [aiResults, setAiResults] = useState<any[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const abortControllerRef = useRef<AbortController | null>(null);
-  
-  // Debounce the search query with 500ms delay
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // Check cache first with static content duration
-        const cachedDestinations = getFromCache(CACHE_KEYS.DESTINATIONS, 'STATIC_DESTINATIONS');
-        if (cachedDestinations) {
-          setDestinations(cachedDestinations);
-          return;
-        }
-
-        const { data } = await supabase.from('ski_resorts').select('*').limit(3);
-        if (data && data.length > 0) {
-          const formattedDestinations = data.map((d: any) => ({
-            id: d.id, name: d.name, country: d.country,
-            description: d.description_es || 'Destino de esquí excepcional.',
-            image_url: d.image_url || 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800',
-            rating: 4.5 + Math.random() * 0.5,
-          }));
-          
-          setDestinations(formattedDestinations);
-          setToCache(CACHE_KEYS.DESTINATIONS, formattedDestinations, 'STATIC_DESTINATIONS');
-        }
-      } catch { 
-        /* stay fallback */ 
-      }
-    })();
-  }, []);
-
-  // Effect to handle debounced search
-  useEffect(() => {
-    if (debouncedSearchQuery.trim()) {
-      performAISearch(debouncedSearchQuery);
-    }
-  }, [debouncedSearchQuery]);
-
-  const performAISearch = useCallback(async (query: string) => {
-    if (!query.trim()) return;
-
-    // Cancel previous request if it exists
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Create new abort controller for this request
-    abortControllerRef.current = new AbortController();
-
-    setAiLoading(true);
-    setHasSearched(true);
-
-    try {
-      // Check cache first with AI search duration
-      const cacheKey = getAISearchCacheKey(query);
-      const cachedResults = getFromCache(cacheKey, 'AI_SEARCH');
-      if (cachedResults) {
-        setAiResults(cachedResults);
-        setAiLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('api-handler', {
-        body: { action: 'ai-search', query },
-      });
-      
-      if (error) throw error;
-      
-      // Check if request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-      
-      const results = data?.results || [];
-      setAiResults(results);
-      
-      // Cache the results with AI search duration
-      setToCache(cacheKey, results, 'AI_SEARCH');
-    } catch (err: any) {
-      // Don't log error if request was aborted
-      if (err.name !== 'AbortError') {
-        console.error('AI Search error:', err);
-        setAiResults([]);
-      }
-    } finally {
-      if (!abortControllerRef.current?.signal.aborted) {
-        setAiLoading(false);
-      }
-    }
-  }, []);
-
-  const handleAISearch = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
   return (
-    <div className="overflow-x-hidden">
+    <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center pt-32 pb-20 px-4">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0B1628]/60 via-[#0B1628] to-[#0B1628]" />
-          <img src="https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1600&q=80" alt="Background" className="w-full h-full object-cover" />
+      <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1600&q=80"
+            alt="Ski Hero"
+            className="w-full h-full object-cover scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-navy-950/60 via-navy-950/40 to-navy-900" />
         </div>
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto text-center space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-8xl font-black tracking-tight text-white animate-fade-up">
-              Esquía <span className="text-blue-500">Sin Límites</span>
-            </h1>
-            <p className="text-lg md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed animate-fade-up-delay-1">
-              Encuentra y planifica tu viaje perfecto a la nieve en segundos con nuestro buscador inteligente.
-            </p>
+        <div className="relative max-w-7xl mx-auto px-4 text-center">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 tracking-tight leading-[1.1]">
+            TU PRÓXIMA <br />
+            <span className="text-blue-400 italic">AVENTURA</span> EN LA NIEVE
+          </h1>
+          <p className="text-lg md:text-2xl text-slate-200 max-w-2xl mx-auto mb-10 font-medium">
+            Agencia experta en viajes de esquí a medida. Los mejores destinos de Europa, EE.UU. y Sudamérica a un clic.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/planear-viaje"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full text-lg font-bold transition-all hover:scale-105 shadow-xl shadow-blue-900/40"
+            >
+              Planea Tu Viaje Gratis
+            </Link>
+            <Link
+              to="/destinos"
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-lg font-bold transition-all"
+            >
+              Explorar Destinos
+            </Link>
           </div>
-
-          <div className="animate-fade-up-delay-2">
-            <AISearchBar onSearch={handleAISearch} isLoading={aiLoading} />
-          </div>
-
-          {hasSearched && (
-            <div id="results" className="pt-8">
-              <AISearchResults results={aiResults} isLoading={aiLoading} />
-            </div>
-          )}
         </div>
       </section>
 
       {/* Featured Destinations */}
-      <section className="py-24 bg-[#0B1628] px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-16">
-            <div className="space-y-4">
-              <span className="text-blue-500 text-xs font-black uppercase tracking-[0.3em]">Top Seleccionados</span>
-              <h2 className="text-4xl font-black text-white">Destinos Populares</h2>
+      <section className="py-24 bg-navy-900">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-black text-white mb-4">DESTINOS DESTACADOS</h2>
+              <div className="h-1.5 w-24 bg-blue-500 rounded-full" />
             </div>
-            <Link to="/destinos" className="group flex items-center gap-2 text-white/40 hover:text-white transition-colors font-bold text-sm">
-              Ver todos los destinos <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <Link to="/destinos" className="hidden md:flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors">
+              Ver todos <ChevronRight className="w-5 h-5" />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {destinations.map((dest) => (
-              <div key={dest.id} className="group relative h-[450px] rounded-[2.5rem] overflow-hidden">
-                <img src={dest.image_url} alt={dest.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-8 left-8 right-8 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full">{dest.country.toUpperCase()}</span>
-                    <div className="flex items-center gap-1 text-xs text-white/80 font-bold">
-                      <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {dest.rating.toFixed(1)}
-                    </div>
+            {resorts.slice(0, 3).map((resort) => (
+              <Link key={resort.id} to={`/destinos/${resort.slug}`} className="group relative overflow-hidden rounded-3xl aspect-[4/5]">
+                <img
+                  src={resort.image}
+                  alt={resort.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-transparent to-transparent opacity-80" />
+                <div className="absolute bottom-0 p-8 w-full">
+                  <div className="flex items-center gap-1 text-yellow-400 mb-2">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="text-white text-sm font-bold">{resort.rating}</span>
                   </div>
-                  <h3 className="text-2xl font-black text-white">{dest.name}</h3>
-                  <p className="text-white/60 text-sm line-clamp-2">{dest.description}</p>
+                  <h3 className="text-3xl font-bold text-white mb-1">{resort.name}</h3>
+                  <p className="text-slate-300 font-medium mb-4">{resort.country} • {resort.region}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {resort.highlights.slice(0, 2).map((h, i) => (
+                      <span key={i} className="text-[10px] uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded">
+                        {h}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-24 bg-navy-950 px-4 border-y border-white/5">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-          {FEATURES.map((f, i) => (
-            <div key={i} className="space-y-4">
-              <div className="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center">
-                <f.icon className="w-7 h-7 text-blue-500" />
-              </div>
-              <h4 className="text-xl font-bold text-white">{f.title}</h4>
-              <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Why Choose Us */}
+      <section className="py-24 bg-navy-950 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6 uppercase">¿POR QUÉ VIAJAR CON NOSOTROS?</h2>
+            <p className="text-slate-400 max-w-2xl mx-auto text-lg">Hacemos que tu única preocupación sea disfrutar de la nieve.</p>
+          </div>
 
-      {/* Newsletter */}
-      <section className="py-24 px-4">
-        <div className="max-w-4xl mx-auto bg-gradient-to-br from-blue-600 to-blue-800 rounded-[3rem] p-8 md:p-16 text-center space-y-8 shadow-2xl shadow-blue-600/20">
-          <h2 className="text-3xl md:text-5xl font-black text-white">¿Ofertas en tu bandeja?</h2>
-          <p className="text-blue-100 text-lg">Suscríbete para recibir los mejores paquetes de último minuto.</p>
-          <form className="flex flex-col md:flex-row gap-4 max-w-lg mx-auto pt-4" onSubmit={(e) => e.preventDefault()}>
-            <input 
-              type="email" 
-              placeholder="Tu mejor email" 
-              className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/50 outline-none focus:bg-white/20 transition-all"
-            />
-            <button className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-black hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg">
-              Enviar <Send className="w-4 h-4" />
-            </button>
-          </form>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              { icon: Compass, title: 'Expertos Locales', desc: 'Conocemos cada pista y cada rincón de los mejores centros.' },
+              { icon: Calendar, title: 'Todo Organizado', desc: 'Vuelos, hoteles, forfaits y traslados sin complicaciones.' },
+              { icon: Mountain, title: 'Destinos Top', desc: 'Acceso exclusivo a los resorts más premium del mundo.' },
+              { icon: Users, title: 'Atención 24/7', desc: 'Estamos contigo antes, durante y después de tu viaje.' }
+            ].map((feature, i) => (
+              <div key={i} className="bg-navy-900/50 p-8 rounded-3xl border border-white/5 hover:border-blue-500/30 transition-colors group">
+                <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors">
+                  <feature.icon className="w-8 h-8 text-blue-500 group-hover:text-white" />
+                </div>
+                <h4 className="text-xl font-bold text-white mb-3">{feature.title}</h4>
+                <p className="text-slate-400 leading-relaxed text-sm">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

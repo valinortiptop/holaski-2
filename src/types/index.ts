@@ -10,8 +10,8 @@ export interface Resort {
   altitude: { base: number; peak: number };
   trails: { total: number; beginner: number; intermediate: number; advanced: number; expert: number };
   lifts: number;
-  skiableArea: number;
-  snowReliability: number;
+  skiableArea: number; // in hectares or km
+  snowReliability: number; // 1-5
   season: { start: string; end: string };
   bestMonths: string[];
   priceRange: { min: number; max: number };
@@ -25,4 +25,21 @@ export interface Resort {
   features: string[];
   apresSkiRating: number;
   familyFriendly: boolean;
+}
+
+export interface TripPackage {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  duration: number;
+  resorts: string[]; // names or slugs
+  priceFrom: number;
+  includes: string[];
+  highlights: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'all-levels';
+  image: string;
+  bestFor: string[];
+  season: string;
 }

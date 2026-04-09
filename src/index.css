@@ -1,37 +1,25 @@
-/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #0B1628;
-  color: white;
-  margin: 0;
+@layer base {
+  body {
+    @apply bg-navy-900 text-slate-200 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-up { animation: fadeUp 0.7s ease-out forwards; }
-.animate-fade-up-delay-1 { animation: fadeUp 0.7s ease-out 0.15s forwards; opacity: 0; }
-.animate-fade-up-delay-2 { animation: fadeUp 0.7s ease-out 0.3s forwards; opacity: 0; }
-.animate-fade-up-delay-3 { animation: fadeUp 0.7s ease-out 0.45s forwards; opacity: 0; }
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95;
+  }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-.animate-float { animation: float 3s ease-in-out infinite; }
+// Tailwind Colors:
+// navy-950: #020617
+// navy-900: #0f172a
+// navy-800: #1e293b
+// blue-400: #60a5fa
+// blue-500: #3b82f6
+// blue-600: #2563eb
+```
