@@ -3,13 +3,48 @@ import { Component, ReactNode } from 'react';
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; }
 
+// Error reporting service
+const reportError = async (error: Error, errorInfo: any) => {
+  try {
+    // Send error to monitoring service (e.g., Sentry, LogRocket, etc.)
+    if (process.env.NODE_ENV === 'production') {
+      // Example implementation - replace with your actual monitoring service
+      await fetch('/api/errors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: error.message,
+          stack: error.stack,
+          componentStack: errorInfo.componentStack,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+        }),
+      });
+    }
+  } catch (reportingError) {
+    console.error('Failed to report error:', reportingError);
+  }
+};
+
 export default class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: Error, info: any) { console.error('ErrorBoundary:', error, info); }
+  
+  static getDerivedStateFromError() { 
+    return { hasError: true }; 
+  }
+  
+  componentDidCatch(error: Error, info: any) { 
+    console.error('ErrorBoundary:', error, info);
+    // Report error to external monitoring service
+    reportError(error, info);
+  }
+  
   render() {
     if (this.state.hasError) {
       return (
