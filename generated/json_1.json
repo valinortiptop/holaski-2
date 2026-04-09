@@ -1,1 +1,2 @@
-\s*/g, "").replace(/
+")) s = s.slice(7)
+  else if (s.startsWith("
