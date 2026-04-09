@@ -33,7 +33,8 @@ function validateEnvironmentVariables(): RequiredEnvVars {
       level: 'FATAL',
       message: errorMessage,
       timestamp: new Date().toISOString(),
-      missingVars
+      missingVars,
+      correlationId: generateRequestId()
     }));
     throw new Error(errorMessage);
   }
@@ -50,13 +51,22 @@ const ENV_VARS = validateEnvironmentVariables();
 // Structured logging utility
 interface LogContext {
   requestId: string;
+  correlationId: string;
   action?: string;
   timestamp: string;
   userAgent?: string;
+  method?: string;
+  url?: string;
+  statusCode?: number;
+  duration?: number;
 }
 
 function generateRequestId(): string {
   return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function generateCorrelationId(): string {
+  return `corr_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`;
 }
 
 function logInfo(message: string, context: LogContext, extra?: any) {
@@ -65,6 +75,7 @@ function logInfo(message: string, context: LogContext, extra?: any) {
     message,
     context,
     extra,
+    correlationId: context.correlationId,
   }));
 }
 
@@ -79,6 +90,7 @@ function logError(message: string, context: LogContext, error?: any, extra?: any
       stack: error.stack,
     } : undefined,
     extra,
+    correlationId: context.correlationId,
   }));
 }
 
@@ -88,6 +100,7 @@ function logWarning(message: string, context: LogContext, extra?: any) {
     message,
     context,
     extra,
+    correlationId: context.correlationId,
   }));
 }
 
@@ -117,13 +130,18 @@ async function withRetry<T>(
       lastError = error;
       
       if (attempt === maxRetries) {
-        logError(`All ${maxRetries} attempts failed`, logContext, error);
+        logError(`All ${maxRetries} attempts failed`, logContext, error, {
+          totalAttempts: maxRetries,
+          finalAttempt: attempt
+        });
         throw error;
       }
       
       logWarning(`Attempt ${attempt} failed, retrying in ${delay}ms`, logContext, {
         error: error.message,
-        remainingAttempts: maxRetries - attempt
+        remainingAttempts: maxRetries - attempt,
+        attempt,
+        nextRetryDelay: delay
       });
       
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -139,12 +157,33 @@ async function fetchWithRetry(
   options: RequestInit,
   logContext: LogContext
 ): Promise<Response> {
-  return await withRetry(
-    () => withTimeout(fetch(url, options), REQUEST_TIMEOUT),
-    MAX_RETRIES,
-    RETRY_DELAY,
-    logContext
-  );
+  const startTime = Date.now();
+  
+  try {
+    const response = await withRetry(
+      () => withTimeout(fetch(url, options), REQUEST_TIMEOUT),
+      MAX_RETRIES,
+      RETRY_DELAY,
+      logContext
+    );
+    
+    const duration = Date.now() - startTime;
+    logInfo('HTTP request completed', { ...logContext, duration }, {
+      status: response.status,
+      ok: response.ok,
+      url
+    });
+    
+    return response;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logError('HTTP request failed', { ...logContext, duration }, error, {
+      url,
+      timeout: REQUEST_TIMEOUT,
+      maxRetries: MAX_RETRIES
+    });
+    throw error;
+  }
 }
 
 /**
@@ -152,18 +191,24 @@ async function fetchWithRetry(
  */
 serve(async (req) => {
   const requestId = generateRequestId();
+  const correlationId = generateCorrelationId();
   const timestamp = new Date().toISOString();
   const userAgent = req.headers.get('user-agent');
+  const startTime = Date.now();
   
   const logContext: LogContext = {
     requestId,
+    correlationId,
     timestamp,
     userAgent,
+    method: req.method,
+    url: req.url,
   };
 
   logInfo('Request received', logContext, {
     method: req.method,
     url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
   });
 
   if (req.method === "OPTIONS") {
@@ -176,43 +221,72 @@ serve(async (req) => {
     const { action } = body;
     
     logContext.action = action;
-    logInfo('Request body parsed', logContext, { action });
+    logInfo('Request body parsed', logContext, { 
+      action,
+      bodySize: JSON.stringify(body).length 
+    });
 
     const context = { PROXY_URL: ENV_VARS.VALINOR_PROXY_URL, PROXY_TOKEN: ENV_VARS.VALINOR_PROXY_TOKEN, corsHeaders, logContext };
 
     logInfo('Routing to action handler', logContext, { action });
 
+    let response: Response;
     switch (action) {
       case "ai-search":
-        return await handleAiSearch(body.query, context);
+        response = await handleAiSearch(body.query, context);
+        break;
       case "send-contact":
-        return await handleSendContact(body, context);
+        response = await handleSendContact(body, context);
+        break;
       case "generate-package":
-        return await handleGeneratePackage(body, context);
+        response = await handleGeneratePackage(body, context);
+        break;
       default:
-        logError(`Unknown action requested: ${action}`, logContext);
-        return new Response(
-          JSON.stringify({ error: "Unknown action", requestId }), 
+        logError(`Unknown action requested: ${action}`, logContext, null, {
+          availableActions: ["ai-search", "send-contact", "generate-package"]
+        });
+        response = new Response(
+          JSON.stringify({ error: "Unknown action", requestId, correlationId }), 
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
+
+    const duration = Date.now() - startTime;
+    logInfo('Request completed', { ...logContext, statusCode: response.status, duration }, {
+      action,
+      status: response.status,
+      success: response.ok
+    });
+
+    return response;
   } catch (err) {
+    const duration = Date.now() - startTime;
+    
     if (err instanceof SyntaxError) {
-      logError("JSON parsing error", logContext, err);
+      logError("JSON parsing error", { ...logContext, statusCode: 400, duration }, err, {
+        errorType: "SYNTAX_ERROR",
+        stage: "JSON_PARSING"
+      });
       return new Response(
-        JSON.stringify({ error: "Invalid JSON payload", requestId }), 
+        JSON.stringify({ error: "Invalid JSON payload", requestId, correlationId }), 
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else if (err instanceof TypeError) {
-      logError("Type error", logContext, err);
+      logError("Type error", { ...logContext, statusCode: 400, duration }, err, {
+        errorType: "TYPE_ERROR",
+        stage: "REQUEST_PROCESSING"
+      });
       return new Response(
-        JSON.stringify({ error: "Invalid request format", requestId }), 
+        JSON.stringify({ error: "Invalid request format", requestId, correlationId }), 
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
-      logError("Unhandled error", logContext, err);
+      logError("Unhandled error", { ...logContext, statusCode: 500, duration }, err, {
+        errorType: "UNHANDLED_ERROR",
+        stage: "REQUEST_PROCESSING"
+      });
       return new Response(
-        JSON.stringify({ error: "Internal server error", requestId }), 
+        JSON.stringify({ error: "Internal server error", requestId, correlationId }), 
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -224,12 +298,15 @@ serve(async (req) => {
  */
 
 async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeaders, logContext }: any) {
-  logInfo('AI search handler started', logContext, { queryLength: query?.length });
+  logInfo('AI search handler started', logContext, { 
+    queryLength: query?.length,
+    queryEmpty: !query?.trim()
+  });
 
   if (!query?.trim()) {
     logWarning('Empty query received, returning empty results', logContext);
     return new Response(
-      JSON.stringify({ results: [] }), 
+      JSON.stringify({ results: [], correlationId: logContext.correlationId }), 
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -239,7 +316,9 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
   try {
     logInfo('Making request to AI service', logContext, {
       timeout: REQUEST_TIMEOUT,
-      maxRetries: MAX_RETRIES
+      maxRetries: MAX_RETRIES,
+      provider: "openai",
+      model: "gpt-4o"
     });
     
     const res = await fetchWithRetry(PROXY_URL, {
@@ -259,13 +338,19 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
     if (!res.ok) {
       logError(`AI search proxy error: ${res.status} ${res.statusText}`, logContext, null, {
         status: res.status,
-        statusText: res.statusText
+        statusText: res.statusText,
+        provider: "openai",
+        endpoint: "/v1/chat/completions",
+        fallbackTriggered: true
       });
       
       // Try to get fallback results
-      logInfo('Attempting fallback for AI search', logContext);
+      logInfo('Attempting fallback for AI search', logContext, {
+        reason: "PROXY_ERROR",
+        fallbackType: "STATIC_RESORTS"
+      });
       return new Response(
-        JSON.stringify({ results: getFallbackResorts(), fallback: true }),
+        JSON.stringify({ results: getFallbackResorts(), fallback: true, correlationId: logContext.correlationId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -275,39 +360,53 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
     content = content.replace(/\s*/g, "").trim();
     
     logInfo('AI search completed successfully', logContext, {
-      responseLength: content.length
+      responseLength: content.length,
+      provider: "openai",
+      tokensUsed: data.usage?.total_tokens || 0
     });
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     if (err.message === 'Request timeout') {
-      logError("AI search timeout", logContext, err);
+      logError("AI search timeout", logContext, err, {
+        timeout: REQUEST_TIMEOUT,
+        fallbackTriggered: true,
+        errorType: "TIMEOUT"
+      });
       return new Response(
         JSON.stringify({ 
           results: getFallbackResorts(), 
           fallback: true,
           error: "Request timeout",
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else if (err instanceof TypeError && err.message.includes('fetch')) {
-      logError("Network error in AI search", logContext, err);
+      logError("Network error in AI search", logContext, err, {
+        errorType: "NETWORK_ERROR",
+        fallbackTriggered: true
+      });
       return new Response(
         JSON.stringify({ 
           results: getFallbackResorts(), 
           fallback: true,
           error: "Network connection failed",
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
-      logError("AI search error", logContext, err);
+      logError("AI search error", logContext, err, {
+        errorType: "UNKNOWN_ERROR"
+      });
       return new Response(
         JSON.stringify({ 
           error: "AI search failed", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -319,13 +418,16 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
   logInfo('Send contact handler started', logContext, {
     hasName: !!body.name,
     hasEmail: !!body.email,
-    hasMessage: !!body.message
+    hasMessage: !!body.message,
+    messageLength: body.message?.length || 0
   });
 
   try {
     logInfo('Making request to email service', logContext, {
       timeout: REQUEST_TIMEOUT,
-      maxRetries: MAX_RETRIES
+      maxRetries: MAX_RETRIES,
+      provider: "resend",
+      recipient: "delivered@resend.dev"
     });
     
     const res = await fetchWithRetry(PROXY_URL, {
@@ -346,40 +448,53 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
     if (!res.ok) {
       logError(`Send contact proxy error: ${res.status} ${res.statusText}`, logContext, null, {
         status: res.status,
-        statusText: res.statusText
+        statusText: res.statusText,
+        provider: "resend",
+        endpoint: "/emails"
       });
       return new Response(
         JSON.stringify({ 
           error: "Email service unavailable", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const responseData = await res.json();
-    logInfo('Contact email sent successfully', logContext);
+    logInfo('Contact email sent successfully', logContext, {
+      emailId: responseData.id || 'unknown',
+      provider: "resend"
+    });
     
     return new Response(
-      JSON.stringify(responseData), 
+      JSON.stringify({ ...responseData, correlationId: logContext.correlationId }), 
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     if (err.message === 'Request timeout') {
-      logError("Send contact timeout", logContext, err);
+      logError("Send contact timeout", logContext, err, {
+        timeout: REQUEST_TIMEOUT,
+        errorType: "TIMEOUT"
+      });
       return new Response(
         JSON.stringify({ 
           error: "Request timeout - please try again", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
-      logError("Send contact error", logContext, err);
+      logError("Send contact error", logContext, err, {
+        errorType: "UNKNOWN_ERROR"
+      });
       return new Response(
         JSON.stringify({ 
           error: "Failed to send contact message", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -389,13 +504,16 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
 
 async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHeaders, logContext }: any) {
   logInfo('Generate package handler started', logContext, {
-    bodyKeys: Object.keys(body || {})
+    bodyKeys: Object.keys(body || {}),
+    bodySize: JSON.stringify(body).length
   });
 
   try {
     logInfo('Making request to package generation service', logContext, {
       timeout: REQUEST_TIMEOUT,
-      maxRetries: MAX_RETRIES
+      maxRetries: MAX_RETRIES,
+      provider: "openai",
+      model: "gpt-4o"
     });
     
     const res = await fetchWithRetry(PROXY_URL, {
@@ -417,12 +535,15 @@ async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHe
     if (!res.ok) {
       logError(`Generate package proxy error: ${res.status} ${res.statusText}`, logContext, null, {
         status: res.status,
-        statusText: res.statusText
+        statusText: res.statusText,
+        provider: "openai",
+        endpoint: "/v1/chat/completions"
       });
       return new Response(
         JSON.stringify({ 
           error: "Package generation service unavailable", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -433,26 +554,35 @@ async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHe
     content = content.replace(/\s*/g, "").trim();
     
     logInfo('Package generation completed successfully', logContext, {
-      responseLength: content.length
+      responseLength: content.length,
+      provider: "openai",
+      tokensUsed: data.usage?.total_tokens || 0
     });
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     if (err.message === 'Request timeout') {
-      logError("Generate package timeout", logContext, err);
+      logError("Generate package timeout", logContext, err, {
+        timeout: REQUEST_TIMEOUT,
+        errorType: "TIMEOUT"
+      });
       return new Response(
         JSON.stringify({ 
           error: "Request timeout - please try again", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
-      logError("Generate package error", logContext, err);
+      logError("Generate package error", logContext, err, {
+        errorType: "UNKNOWN_ERROR"
+      });
       return new Response(
         JSON.stringify({ 
           error: "Failed to generate package", 
-          requestId: logContext.requestId 
+          requestId: logContext.requestId,
+          correlationId: logContext.correlationId
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
