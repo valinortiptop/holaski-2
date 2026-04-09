@@ -1,6 +1,8 @@
 // src/lib/i18n.ts
 export type Lang = 'es' | 'en';
-const d: Record<string, Record<Lang, string>> = {
+
+// Navigation translations
+const navTranslations: Record<string, Record<Lang, string>> = {
   'nav.home': { es: 'Inicio', en: 'Home' },
   'nav.wizard': { es: 'Planifica tu Viaje', en: 'Plan Trip' },
   'nav.resorts': { es: 'Centros de Esquí', en: 'Resorts' },
@@ -8,11 +10,19 @@ const d: Record<string, Record<Lang, string>> = {
   'nav.login': { es: 'Iniciar Sesión', en: 'Sign In' },
   'nav.signup': { es: 'Registrarse', en: 'Sign Up' },
   'nav.logout': { es: 'Salir', en: 'Sign Out' },
+};
+
+// Hero section translations
+const heroTranslations: Record<string, Record<Lang, string>> = {
   'hero.t1': { es: 'Tu Aventura en la Nieve', en: 'Your Snow Adventure' },
   'hero.t2': { es: 'Comienza Aquí', en: 'Starts Here' },
   'hero.sub': { es: 'Planifica el viaje de esquí perfecto con IA. Vuelos, hoteles, pases y equipos — todo en un solo lugar.', en: 'Plan the perfect ski trip with AI. Flights, hotels, passes and gear — all in one place.' },
   'hero.cta': { es: 'Comenzar Planificación', en: 'Start Planning' },
   'hero.explore': { es: 'Explorar Centros', en: 'Explore Resorts' },
+};
+
+// Features section translations
+const featuresTranslations: Record<string, Record<Lang, string>> = {
   'why.title': { es: '¿Por qué HolaSki?', en: 'Why HolaSki?' },
   'why.ai': { es: 'IA Inteligente', en: 'Smart AI' },
   'why.aiD': { es: 'Paquetes personalizados según tu experiencia y presupuesto.', en: 'Packages personalized to your experience and budget.' },
@@ -24,6 +34,10 @@ const d: Record<string, Record<Lang, string>> = {
   'why.priceD': { es: 'Sin costos ocultos. Desglose completo antes de reservar.', en: 'No hidden costs. Full breakdown before booking.' },
   'feat.title': { es: 'Centros Destacados', en: 'Featured Resorts' },
   'feat.sub': { es: 'Los mejores destinos de esquí del mundo', en: 'The best ski destinations worldwide' },
+};
+
+// Wizard translations
+const wizardTranslations: Record<string, Record<Lang, string>> = {
   'wiz.title': { es: 'Planifica tu Viaje de Esquí', en: 'Plan Your Ski Trip' },
   'wiz.sub': { es: 'Nuestra IA creará el paquete perfecto para ti', en: 'Our AI will create the perfect package for you' },
   'wiz.s1': { es: 'Experiencia', en: 'Experience' },
@@ -58,6 +72,10 @@ const d: Record<string, Record<Lang, string>> = {
   'wiz.regQ': { es: '¿Dónde quieres esquiar?', en: 'Where do you want to ski?' },
   'wiz.depart': { es: 'Ciudad de salida', en: 'Departure city' },
   'wiz.dates': { es: 'Fechas preferidas', en: 'Preferred dates' },
+};
+
+// Package/Booking translations
+const packageTranslations: Record<string, Record<Lang, string>> = {
   'pkg.pp': { es: 'por persona', en: 'per person' },
   'pkg.flight': { es: 'Vuelo', en: 'Flight' },
   'pkg.hotel': { es: 'Hotel', en: 'Hotel' },
@@ -77,6 +95,10 @@ const d: Record<string, Record<Lang, string>> = {
   'pkg.days': { es: 'días', en: 'days' },
   'pkg.direct': { es: 'Directo', en: 'Direct' },
   'pkg.stops': { es: 'escalas', en: 'stops' },
+};
+
+// Resorts page translations
+const resortsTranslations: Record<string, Record<Lang, string>> = {
   'resorts.title': { es: 'Centros de Esquí', en: 'Ski Resorts' },
   'resorts.sub': { es: 'Descubre los mejores destinos', en: 'Discover the best destinations' },
   'resorts.all': { es: 'Todos', en: 'All' },
@@ -85,17 +107,43 @@ const d: Record<string, Record<Lang, string>> = {
   'resorts.season': { es: 'Temporada', en: 'Season' },
   'resorts.from': { es: 'Desde', en: 'From' },
   'resorts.plan': { es: 'Planificar', en: 'Plan Trip' },
+};
+
+// Dashboard translations
+const dashboardTranslations: Record<string, Record<Lang, string>> = {
   'dash.title': { es: 'Mis Viajes', en: 'My Trips' },
   'dash.none': { es: 'No tienes viajes guardados', en: 'No saved trips' },
   'dash.start': { es: 'Planifica tu primera aventura', en: 'Plan your first adventure' },
+};
+
+// Authentication translations
+const authTranslations: Record<string, Record<Lang, string>> = {
   'auth.login': { es: 'Iniciar Sesión', en: 'Sign In' },
   'auth.signup': { es: 'Crear Cuenta', en: 'Create Account' },
   'auth.email': { es: 'Correo electrónico', en: 'Email' },
   'auth.pass': { es: 'Contraseña', en: 'Password' },
   'auth.name': { es: 'Nombre completo', en: 'Full name' },
+};
+
+// Footer translations
+const footerTranslations: Record<string, Record<Lang, string>> = {
   'footer.rights': { es: 'Todos los derechos reservados.', en: 'All rights reserved.' },
   'footer.contact': { es: 'Contacto', en: 'Contact' },
   'footer.privacy': { es: 'Privacidad', en: 'Privacy' },
   'footer.terms': { es: 'Términos', en: 'Terms' },
 };
+
+// Combine all translations
+const d: Record<string, Record<Lang, string>> = {
+  ...navTranslations,
+  ...heroTranslations,
+  ...featuresTranslations,
+  ...wizardTranslations,
+  ...packageTranslations,
+  ...resortsTranslations,
+  ...dashboardTranslations,
+  ...authTranslations,
+  ...footerTranslations,
+};
+
 export function t(key: string, lang: Lang): string { return d[key]?.[lang] || key; }
