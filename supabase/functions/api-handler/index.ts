@@ -5,6 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 }
 
+// Timeout and retry configuration
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
+
 // Structured logging utility
 interface LogContext {
   requestId: string;
@@ -47,6 +52,62 @@ function logWarning(message: string, context: LogContext, extra?: any) {
     context,
     extra,
   }));
+}
+
+// Timeout utility function
+function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
+}
+
+// Retry utility function
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number,
+  delay: number,
+  logContext: LogContext
+): Promise<T> {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt === maxRetries) {
+        logError(`All ${maxRetries} attempts failed`, logContext, error);
+        throw error;
+      }
+      
+      logWarning(`Attempt ${attempt} failed, retrying in ${delay}ms`, logContext, {
+        error: error.message,
+        remainingAttempts: maxRetries - attempt
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+// Enhanced fetch with timeout and retry
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  logContext: LogContext
+): Promise<Response> {
+  return await withRetry(
+    () => withTimeout(fetch(url, options), REQUEST_TIMEOUT),
+    MAX_RETRIES,
+    RETRY_DELAY,
+    logContext
+  );
 }
 
 /**
@@ -150,9 +211,12 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
   const systemPrompt = "Eres un experto en viajes de esqui. Sugiere 3 centros de esqui para la busqueda del usuario. Devuelve SOLO JSON: {\"results\":[{\"id\":\"slug\",\"resort_name\":\"Nombre\",\"country\":\"Pais\",\"region\":\"Region\",\"price_range_usd\":\"$X-$Y/dia\",\"difficulty\":\"intermediate\",\"highlights\":[\"a\",\"b\"],\"rating\":4.8,\"image_url\":\"https://images.unsplash.com/photo-1551524559-8af4e6624178?w=600\",\"match_score\":95,\"why_it_matches\":\"Razon\"}]}";
 
   try {
-    logInfo('Making request to AI service', logContext);
+    logInfo('Making request to AI service', logContext, {
+      timeout: REQUEST_TIMEOUT,
+      maxRetries: MAX_RETRIES
+    });
     
-    const res = await fetch(PROXY_URL, {
+    const res = await fetchWithRetry(PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
       body: JSON.stringify({
@@ -164,7 +228,7 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
           temperature: 0.7
         }
       })
-    });
+    }, logContext);
 
     if (!res.ok) {
       logError(`AI search proxy error: ${res.status} ${res.statusText}`, logContext, null, {
@@ -190,7 +254,18 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    if (err instanceof TypeError && err.message.includes('fetch')) {
+    if (err.message === 'Request timeout') {
+      logError("AI search timeout", logContext, err);
+      return new Response(
+        JSON.stringify({ 
+          results: getFallbackResorts(), 
+          fallback: true,
+          error: "Request timeout",
+          requestId: logContext.requestId 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else if (err instanceof TypeError && err.message.includes('fetch')) {
       logError("Network error in AI search", logContext, err);
       return new Response(
         JSON.stringify({ 
@@ -222,9 +297,12 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
   });
 
   try {
-    logInfo('Making request to email service', logContext);
+    logInfo('Making request to email service', logContext, {
+      timeout: REQUEST_TIMEOUT,
+      maxRetries: MAX_RETRIES
+    });
     
-    const res = await fetch(PROXY_URL, {
+    const res = await fetchWithRetry(PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
       body: JSON.stringify({
@@ -237,7 +315,7 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
           html: `<p><b>Email:</b> ${body.email}</p><p><b>Msj:</b> ${body.message}</p>`
         }
       })
-    });
+    }, logContext);
 
     if (!res.ok) {
       logError(`Send contact proxy error: ${res.status} ${res.statusText}`, logContext, null, {
@@ -261,14 +339,25 @@ async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeader
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    logError("Send contact error", logContext, err);
-    return new Response(
-      JSON.stringify({ 
-        error: "Failed to send contact message", 
-        requestId: logContext.requestId 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    if (err.message === 'Request timeout') {
+      logError("Send contact timeout", logContext, err);
+      return new Response(
+        JSON.stringify({ 
+          error: "Request timeout - please try again", 
+          requestId: logContext.requestId 
+        }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      logError("Send contact error", logContext, err);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to send contact message", 
+          requestId: logContext.requestId 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   }
 }
 
@@ -278,9 +367,12 @@ async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHe
   });
 
   try {
-    logInfo('Making request to package generation service', logContext);
+    logInfo('Making request to package generation service', logContext, {
+      timeout: REQUEST_TIMEOUT,
+      maxRetries: MAX_RETRIES
+    });
     
-    const res = await fetch(PROXY_URL, {
+    const res = await fetchWithRetry(PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
       body: JSON.stringify({
@@ -294,7 +386,7 @@ async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHe
           ]
         }
       })
-    });
+    }, logContext);
 
     if (!res.ok) {
       logError(`Generate package proxy error: ${res.status} ${res.statusText}`, logContext, null, {
@@ -320,14 +412,25 @@ async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHe
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    logError("Generate package error", logContext, err);
-    return new Response(
-      JSON.stringify({ 
-        error: "Failed to generate package", 
-        requestId: logContext.requestId 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    if (err.message === 'Request timeout') {
+      logError("Generate package timeout", logContext, err);
+      return new Response(
+        JSON.stringify({ 
+          error: "Request timeout - please try again", 
+          requestId: logContext.requestId 
+        }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      logError("Generate package error", logContext, err);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to generate package", 
+          requestId: logContext.requestId 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   }
 }
 
