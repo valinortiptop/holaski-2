@@ -7,7 +7,7 @@ interface AISearchBarProps {
   isLoading: boolean;
 }
 
-const tags = ['Familiar', 'Nieve polvo', 'Alpes', 'Economico', 'Japon', 'Principiante'];
+const tags = ['Familiar', 'Nieve polvo', 'Alpes', 'Económico', 'Japón', 'Principiante'];
 
 export default function AISearchBar({ onSearch, isLoading }: AISearchBarProps) {
   const [query, setQuery] = useState('');
@@ -36,7 +36,7 @@ export default function AISearchBar({ onSearch, isLoading }: AISearchBarProps) {
 
       <form onSubmit={handleSubmit} className="relative group">
         <div className="absolute -inset-1 bg-blue-500/15 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
-        <div className="relative flex items-center bg-white/[0.07] backdrop-blur-xl border border-white/[0.15] rounded-2xl md:rounded-full p-2 focus-within:border-blue-500/40 transition-all shadow-2xl">
+        <div className="relative flex items-center bg-white/[0.07] backdrop-blur-xl border border-white/[0.15] rounded-2xl md:rounded-full p-2 focus-within:border-blue-400/40 transition-all shadow-2xl">
           <div className="pl-4 pr-2 shrink-0">
             <Sparkles className="w-5 h-5 text-blue-400" />
           </div>
@@ -44,26 +44,35 @@ export default function AISearchBar({ onSearch, isLoading }: AISearchBarProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ej: 'Busco un resort familiar en los Alpes con nieve polvo'..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder:text-white/30 py-3 md:py-4 text-sm md:text-base outline-none min-h-[44px]"
+            placeholder="Ej: 'Resort familiar en los Alpes con nieve polvo'..."
+            className="flex-1 bg-transparent border-none text-white placeholder:text-white/30 py-3 md:py-4 text-sm md:text-base outline-none min-w-0"
             disabled={isLoading}
           />
           <button
             type="submit"
             disabled={isLoading || !query.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-white p-3 md:p-4 rounded-xl md:rounded-full transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white p-3 md:px-6 md:py-3 rounded-xl md:rounded-full font-bold transition-all flex items-center gap-2 shrink-0"
           >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Search className="w-5 h-5" />
+                <span className="hidden md:inline text-sm">Buscar</span>
+              </>
+            )}
           </button>
         </div>
       </form>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/25 mr-1">Prueba:</span>
         {tags.map((tag) => (
           <button
             key={tag}
             onClick={() => handleTag(tag)}
-            className="text-[12px] font-medium px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-white/60 min-h-[44px] md:min-h-0"
+            disabled={isLoading}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-white/50 hover:text-white disabled:opacity-40"
           >
             {tag}
           </button>
