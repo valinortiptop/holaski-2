@@ -15,7 +15,7 @@ export interface Resort {
   season: { start: string; end: string };
   bestMonths: string[];
   priceRange: { min: number; max: number };
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'all-levels';
+  difficulty: string;
   highlights: string[];
   nearbyAirports: { name: string; distance: string }[];
   image: string;
@@ -33,7 +33,7 @@ export interface TripPackage {
   tagline: string;
   description: string;
   duration: number;
-  resortNames: string[];
+  resortSlugs: string[];
   priceFrom: number;
   includes: string[];
   highlights: string[];
