@@ -19,6 +19,7 @@ serve(async (req) => {
     const PROXY_TOKEN = Deno.env.get("VALINOR_PROXY_TOKEN")
 
     if (!PROXY_TOKEN) {
+      console.error("Configuration error: Missing PROXY_TOKEN")
       return new Response(
         JSON.stringify({ error: "Missing PROXY_TOKEN configuration" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -35,10 +36,29 @@ serve(async (req) => {
       case "generate-package":
         return await handleGeneratePackage(body, context)
       default:
+        console.error(`Unknown action requested: ${action}`)
         return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: corsHeaders })
     }
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
+    if (err instanceof SyntaxError) {
+      console.error("JSON parsing error:", err.message)
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON payload" }), 
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    } else if (err instanceof TypeError) {
+      console.error("Type error:", err.message)
+      return new Response(
+        JSON.stringify({ error: "Invalid request format" }), 
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    } else {
+      console.error("Unhandled error:", err.message, err.stack)
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }), 
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
   }
 })
 
@@ -66,57 +86,108 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
       })
     })
 
+    if (!res.ok) {
+      console.error(`AI search proxy error: ${res.status} ${res.statusText}`)
+      return new Response(
+        JSON.stringify({ error: "AI service unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
     const data = await res.json()
     let content = data.choices?.[0]?.message?.content || "{}"
     content = content.replace(/\s*/g, "").trim()
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } })
   } catch (err) {
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      console.error("Network error in AI search:", err.message)
+      return new Response(
+        JSON.stringify({ error: "Network connection failed" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    } else {
+      console.error("AI search error:", err.message, err.stack)
+      return new Response(
+        JSON.stringify({ error: "AI search failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+  }
+}
+
+async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeaders }: any) {
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
+      body: JSON.stringify({
+        provider: "resend",
+        endpoint: "/emails",
+        payload: {
+          from: "HolaSki <onboarding@resend.dev>",
+          to: ["delivered@resend.dev"],
+          subject: `Contacto de ${body.name}`,
+          html: `<p><b>Email:</b> ${body.email}</p><p><b>Msj:</b> ${body.message}</p>`
+        }
+      })
+    })
+
+    if (!res.ok) {
+      console.error(`Send contact proxy error: ${res.status} ${res.statusText}`)
+      return new Response(
+        JSON.stringify({ error: "Email service unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
+    return new Response(JSON.stringify(await res.json()), { headers: corsHeaders })
+  } catch (err) {
+    console.error("Send contact error:", err.message, err.stack)
     return new Response(
-      JSON.stringify({ error: "AI search failed" }),
+      JSON.stringify({ error: "Failed to send contact message" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
   }
 }
 
-async function handleSendContact(body: any, { PROXY_URL, PROXY_TOKEN, corsHeaders }: any) {
-  const res = await fetch(PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
-    body: JSON.stringify({
-      provider: "resend",
-      endpoint: "/emails",
-      payload: {
-        from: "HolaSki <onboarding@resend.dev>",
-        to: ["delivered@resend.dev"],
-        subject: `Contacto de ${body.name}`,
-        html: `<p><b>Email:</b> ${body.email}</p><p><b>Msj:</b> ${body.message}</p>`
-      }
-    })
-  })
-  return new Response(JSON.stringify(await res.json()), { headers: corsHeaders })
-}
-
 async function handleGeneratePackage(body: any, { PROXY_URL, PROXY_TOKEN, corsHeaders }: any) {
-  const res = await fetch(PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
-    body: JSON.stringify({
-      provider: "openai",
-      endpoint: "/v1/chat/completions",
-      payload: {
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "Genera un paquete de viaje de esqui detallado en JSON. Todo en espanol. Solo JSON puro." },
-          { role: "user", content: JSON.stringify(body) }
-        ]
-      }
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
+      body: JSON.stringify({
+        provider: "openai",
+        endpoint: "/v1/chat/completions",
+        payload: {
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: "Genera un paquete de viaje de esqui detallado en JSON. Todo en espanol. Solo JSON puro." },
+            { role: "user", content: JSON.stringify(body) }
+          ]
+        }
+      })
     })
-  })
-  const data = await res.json()
-  let content = data.choices?.[0]?.message?.content || "{}"
-  content = content.replace(/\s*/g, "").trim()
-  return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } })
+
+    if (!res.ok) {
+      console.error(`Generate package proxy error: ${res.status} ${res.statusText}`)
+      return new Response(
+        JSON.stringify({ error: "Package generation service unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
+    const data = await res.json()
+    let content = data.choices?.[0]?.message?.content || "{}"
+    content = content.replace(/\s*/g, "").trim()
+    return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } })
+  } catch (err) {
+    console.error("Generate package error:", err.message, err.stack)
+    return new Response(
+      JSON.stringify({ error: "Failed to generate package" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    )
+  }
 }
 
 function getFallbackResorts() {
