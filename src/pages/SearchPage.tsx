@@ -5,10 +5,21 @@ import { Search, MapPin, Star, Clock, Sparkles, ArrowRight, Loader2 } from 'luci
 import { supabase } from '../lib/supabase';
 import { FALLBACK_RESORTS } from '../data/resorts';
 
+interface SearchResult {
+  resort: string;
+  country: string;
+  description: string;
+  price_from: string;
+  duration: string;
+  highlights: string[];
+  rating?: number;
+  image_keyword?: string;
+}
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const query = searchParams.get('q') || '';
   const origin = searchParams.get('origin') || '';
