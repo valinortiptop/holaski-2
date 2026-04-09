@@ -72,7 +72,10 @@ async function handleAiSearch(query: string, { PROXY_URL, PROXY_TOKEN, corsHeade
     
     return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } })
   } catch (err) {
-    return new Response(JSON.stringify({ results: getFallbackResorts() }), { headers: corsHeaders })
+    return new Response(
+      JSON.stringify({ error: "AI search failed" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    )
   }
 }
 
