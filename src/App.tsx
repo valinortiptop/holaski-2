@@ -1,29 +1,25 @@
 // @ts-nocheck
-import { Routes, Route } from 'react-router-dom'
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
-import HomePage from './pages/HomePage'
-import DestinosPage from './pages/DestinosPage'
-import DestinoDetailPage from './pages/DestinoDetailPage'
-import PaquetesPage from './pages/PaquetesPage'
-import PlanearViajePage from './pages/PlanearViajePage'
-import ContactoPage from './pages/ContactoPage'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import HomePage from './pages/HomePage';
+import PlanearViajePage from './pages/PlanearViajePage';
+import PaquetesPage from './pages/PaquetesPage';
 
-export default function App() {
+function App() {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0B1628', color: 'white', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <Navbar />
-      <main>
+    <Router>
+      <div className="min-h-screen bg-navy-950 font-sans selection:bg-blue-500/30">
+        <Navbar />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/destinos" element={<DestinosPage />} />
-          <Route path="/destinos/:slug" element={<DestinoDetailPage />} />
-          <Route path="/paquetes" element={<PaquetesPage />} />
           <Route path="/planear" element={<PlanearViajePage />} />
-          <Route path="/contacto" element={<ContactoPage />} />
+          <Route path="/paquetes" element={<PaquetesPage />} />
         </Routes>
-      </main>
-      <Footer />
-    </div>
-  )
+        <Footer />
+      </div>
+    </Router>
+  );
 }
+
+export default App;
