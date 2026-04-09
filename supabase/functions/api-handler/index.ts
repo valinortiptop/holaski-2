@@ -20,8 +20,8 @@ serve(async (req) => {
 
     if (!PROXY_TOKEN) {
       return new Response(
-        JSON.stringify({ error: "Missing PROXY_TOKEN", results: getFallbackResorts() }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Missing PROXY_TOKEN configuration" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
 
@@ -132,37 +132,4 @@ function getFallbackResorts() {
       why_it_matches: "Excelente opcion para esquiadores intermedios."
     }
   ]
-}
-
-// package.json
-{
-  "name": "holaski-v2",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.3",
-    "@supabase/supabase-js": "^2.39.8",
-    "lucide-react": "^0.344.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.1",
-    "sonner": "^1.4.3"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.2.2",
-    "vite": "^5.1.4"
-  }
 }
