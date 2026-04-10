@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
+import { Clock, Users, ArrowRight, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { TripPackage } from '../types/database';
-import { Calendar, Tag, CheckCircle2, Loader2 } from 'lucide-react';
+import type { TripPackage } from '../types/database';
 
 export default function PaquetesPage() {
   const [packages, setPackages] = useState<TripPackage[]>([]);
@@ -13,8 +13,7 @@ export default function PaquetesPage() {
       try {
         const { data, error } = await supabase
           .from('trip_packages')
-          .select('*')
-          .order('price_from');
+          .select('*');
         
         if (error) throw error;
         setPackages(data || []);
@@ -28,56 +27,59 @@ export default function PaquetesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-navy-900 pt-32 pb-20 px-4">
+    <div className="pt-32 pb-20 px-4 min-h-screen bg-navy-950">
       <div className="max-w-7xl mx-auto">
-        <header className="text-center mb-16">
-          <span className="text-blue-500 font-black uppercase tracking-[0.3em] text-sm">Escapadas Curadas</span>
-          <h1 className="text-5xl md:text-7xl font-black text-white mt-4 mb-6 tracking-tighter uppercase">PAQUETES <span className="text-blue-500">PRO</span></h1>
-          <p className="text-slate-400 text-xl max-w-2xl mx-auto">Experiencias todo incluido diseñadas por esquiadores para esquiadores.</p>
-        </header>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+          <div>
+            <span className="text-blue-500 font-bold tracking-[0.3em] uppercase text-sm">Viajes Organizados</span>
+            <h1 className="text-5xl md:text-7xl font-black mt-4 tracking-tighter">PAQUETES EXCLUSIVOS</h1>
+          </div>
+          <p className="text-slate-400 max-w-md text-lg leading-relaxed">
+            Itinerarios prediseñados por nuestros expertos que incluyen alojamiento, pases y transporte.
+          </p>
+        </div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            {[1,2,3].map(i => <div key={i} className="h-[600px] bg-white/5 rounded-[3rem] animate-pulse" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {packages.map((pkg) => (
-              <div key={pkg.id} className="group bg-navy-950 border border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row hover:border-blue-500/30 transition-all shadow-2xl">
-                <div className="md:w-2/5 relative h-64 md:h-auto">
-                  <img src={pkg.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={pkg.name} />
-                  <div className="absolute top-6 left-6 bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-sm uppercase shadow-xl">
-                    {pkg.difficulty}
+              <div 
+                key={pkg.id}
+                className="group relative bg-navy-900 border border-white/5 rounded-[3rem] overflow-hidden flex flex-col"
+              >
+                <div className="h-80 overflow-hidden relative">
+                  <img 
+                    src={pkg.image_url} 
+                    alt={pkg.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute top-6 left-6">
+                    <div className="bg-blue-600 text-white px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                      <Sparkles className="w-3 h-3" /> {pkg.difficulty}
+                    </div>
                   </div>
                 </div>
-                <div className="md:w-3/5 p-8 md:p-10 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 text-blue-400 font-bold text-sm uppercase mb-3">
-                      <Tag className="w-4 h-4" /> {pkg.destination}
-                    </div>
-                    <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tight">{pkg.name}</h3>
-                    <p className="text-slate-400 mb-6 leading-relaxed">{pkg.description}</p>
-                    
-                    <ul className="grid grid-cols-2 gap-3 mb-8">
-                      {pkg.package_data?.features?.map((f, i) => (
-                        <li key={i} className="flex items-center gap-2 text-slate-300 text-sm font-bold">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" /> {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-8 border-t border-white/5">
+                <div className="p-10 flex-grow flex flex-col">
+                  <div className="flex items-center gap-4 text-slate-400 text-sm font-bold uppercase tracking-widest mb-4">
+                    <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {pkg.duration_days} Días</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Premium</span>
+                  </div>
+                  
+                  <h3 className="text-3xl font-black mb-2 leading-tight">{pkg.name}</h3>
+                  <p className="text-blue-400 font-bold mb-8 uppercase text-sm tracking-wider">{pkg.destination}</p>
+                  
+                  <div className="mt-auto flex items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-2 text-slate-500 text-xs font-black uppercase mb-1">
-                        <Calendar className="w-3.5 h-3.5" /> {pkg.duration_days} Días
-                      </div>
-                      <div className="text-3xl font-black text-white">
-                        <span className="text-blue-500 text-xl">Desde</span> ${pkg.price_from}
-                      </div>
+                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Desde</p>
+                      <p className="text-4xl font-black text-white">${Number(pkg.price_from).toLocaleString()}</p>
                     </div>
-                    <button className="bg-white text-navy-900 px-6 py-3.5 rounded-2xl font-black text-sm hover:bg-blue-500 hover:text-white transition-all transform hover:scale-105 shadow-xl">
-                      RESERVAR
+                    
+                    <button className="h-16 w-16 rounded-2xl bg-white text-navy-950 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all transform hover:rotate-12">
+                      <ArrowRight className="w-8 h-8" />
                     </button>
                   </div>
                 </div>
