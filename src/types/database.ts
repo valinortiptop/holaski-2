@@ -14,23 +14,21 @@ export interface Resort {
     intermediate: number;
     advanced: number;
   };
-  description: string;
   price_level: number;
   image_url: string;
-  gallery_urls?: string[];
-  created_at: string;
+  description: string;
+  created_at?: string;
 }
 
-export interface TripPackage {
+export interface Package {
   id: string;
-  slug: string;
+  resort_id: string;
   name: string;
-  destination: string;
-  duration_days: number;
-  price_from: number;
-  image_url: string;
   description: string;
-  difficulty: string;
-  highlights: string[];
-  created_at: string;
+  price_usd: number;
+  duration_days: number;
+  includes: string[];
+  image_url: string;
+  featured: boolean;
+  resort?: Resort;
 }
