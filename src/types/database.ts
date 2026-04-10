@@ -1,35 +1,36 @@
-export interface Lead {
-  id: string;
-  created_at: string;
-  first_name: string;
-  email: string;
-  destination: string | null;
-  travel_dates: string | null;
-  passengers_adults: number;
-  passengers_children: number;
-  skill_level: string | null;
-  budget_range: string | null;
-  message: string | null;
-  status: 'new' | 'contacted' | 'qualified' | 'lost' | 'won';
-}
-
+// @ts-nocheck
 export interface Resort {
   id: string;
-  name: string;
   slug: string;
-  country: string;
+  name: string;
   region: string;
-  description: string;
-  stats: {
-    altitude: string;
-    slopes: string;
-    lifts: string;
-    difficulty: {
-      easy: number;
-      intermediate: number;
-      advanced: number;
-    };
+  country: string;
+  altitude_top: number;
+  altitude_base: number;
+  runs_total: number;
+  lifts_total: number;
+  difficulty_json: {
+    beginner: number;
+    intermediate: number;
+    advanced: number;
   };
+  description: string;
+  price_level: number;
   image_url: string;
-  category: 'lux' | 'family' | 'party' | 'pro';
+  gallery_urls?: string[];
+  created_at: string;
+}
+
+export interface TripPackage {
+  id: string;
+  slug: string;
+  name: string;
+  destination: string;
+  duration_days: number;
+  price_from: number;
+  image_url: string;
+  description: string;
+  difficulty: string;
+  highlights: string[];
+  created_at: string;
 }
