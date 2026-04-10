@@ -1,76 +1,100 @@
 // @ts-nocheck
-import { Link } from 'react-router-dom'
-import { ChevronRight, Snowflake, MapPin, Star } from 'lucide-react'
-import { RESORTS } from '../data/resorts'
+import { ArrowRight, Snowflake, Globe, Shield, Trophy, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function HomePage() {
   return (
     <div className="bg-navy-900">
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
         <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/80 to-navy-900 z-10" />
           <img 
-            src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&q=80&w=2000" 
-            className="w-full h-full object-cover opacity-50 scale-105"
-            alt="Snow hero"
+            src="https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?auto=format&fit=crop&q=80" 
+            className="w-full h-full object-cover"
+            alt="Hero background"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-navy-950/20 via-navy-950/60 to-navy-900"></div>
         </div>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center pt-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-widest mb-8 anim-1">
-            <Snowflake className="w-4 h-4" /> La Nieve Te Espera
-          </div>
-          <h1 className="text-6xl md:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tighter anim-2">
-            EL MUNDO A TUS <span className="text-blue-500">ESQUÍS</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto font-medium anim-3">
-            Diseñamos viajes de esquí personalizados en los Alpes, Rocosas y Japón. Lujo, aventura y la mejor nieve del planeta.
-          </p>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 anim-4">
-            <Link to="/planear" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all shadow-xl shadow-blue-600/20">
-              COMENZAR MI VIAJE
-            </Link>
-            <Link to="/destinos" className="w-full md:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-10 py-5 rounded-2xl font-black text-lg transition-all border border-white/10">
-              VER DESTINOS
-            </Link>
+        <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-8">
+          <div className="max-w-4xl">
+            <span className="inline-block bg-blue-600/20 backdrop-blur-md border border-blue-500/30 text-blue-400 px-6 py-2 rounded-full text-sm font-black uppercase tracking-[0.3em] mb-8 animate-in fade-in slide-in-from-bottom duration-700">
+              Temporada 2024/25
+            </span>
+            <h1 className="text-6xl md:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-10 animate-in fade-in slide-in-from-bottom duration-1000 delay-100">
+              ESQUÍ SIN <br />
+              <span className="text-blue-500">LÍMITES.</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-200">
+              Viajes personalizados a las montañas más impresionantes del mundo. Desde los Alpes hasta Japón, diseñamos tu invierno perfecto.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+              <Link 
+                to="/planear-viaje"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-2xl shadow-blue-600/30 group"
+              >
+                PLANEAR MI VIAJE <ArrowRight className="group-hover:translate-x-2 transition-transform" />
+              </Link>
+              <Link 
+                to="/destinos"
+                className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-10 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all"
+              >
+                VER DESTINOS
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Featured Destinations */}
-      <section className="py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-end mb-16">
-            <div>
-              <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">Destinos de <span className="text-blue-500">Leyenda</span></h2>
-              <p className="text-slate-400 text-lg">Seleccionamos solo los mejores resorts del mundo para tu próxima aventura.</p>
+      {/* Features */}
+      <section className="py-32 bg-navy-950">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
+            <div className="space-y-6">
+              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center">
+                <Globe className="text-blue-500 w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tight">Acceso Global</h3>
+              <p className="text-slate-400 text-lg leading-relaxed">Conectamos los mejores resorts en los 5 continentes con logística premium.</p>
             </div>
-            <Link to="/destinos" className="hidden md:flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors">
-              VER TODOS <ChevronRight className="w-5 h-5" />
-            </Link>
+            <div className="space-y-6">
+              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center">
+                <Shield className="text-blue-500 w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tight">Seguridad Total</h3>
+              <p className="text-slate-400 text-lg leading-relaxed">Guías certificados y seguros de alta montaña incluidos en cada paquete.</p>
+            </div>
+            <div className="space-y-6">
+              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center">
+                <Trophy className="text-blue-500 w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tight">Calidad Elite</h3>
+              <p className="text-slate-400 text-lg leading-relaxed">Hoteles boutique y servicios exclusivos a pie de pista (Ski-in/Ski-out).</p>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {RESORTS.slice(0, 3).map((resort) => (
-              <Link key={resort.id} to={`/destinos/${resort.slug}`} className="group relative aspect-[4/5] rounded-[2.5rem] overflow-hidden">
-                <img src={resort.imageUrl} alt={resort.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-transparent to-transparent opacity-80"></div>
-                <div className="absolute bottom-0 left-0 right-0 p-8">
-                  <div className="flex items-center gap-2 text-blue-400 font-black text-xs uppercase tracking-widest mb-2">
-                    <MapPin className="w-4 h-4" /> {resort.region}
-                  </div>
-                  <h3 className="text-3xl font-black text-white mb-2">{resort.name}</h3>
-                  <div className="flex items-center gap-4 text-white/60 text-sm font-bold">
-                    <span>{resort.slopesKm}km Pistas</span>
-                    <span>{resort.flag} {resort.country}</span>
-                  </div>
-                </div>
+      {/* CTA */}
+      <section className="py-32 bg-navy-900">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="bg-blue-600 rounded-[3rem] p-12 md:p-24 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 w-1/2 h-full opacity-10 group-hover:opacity-20 transition-opacity">
+              <Snowflake className="w-full h-full rotate-12" />
+            </div>
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-8">¿Listo para tu próxima aventura?</h2>
+              <p className="text-blue-100 text-xl md:text-2xl mb-12 font-medium">Déjanos diseñar el itinerario de tus sueños sin costo adicional.</p>
+              <Link 
+                to="/planear-viaje"
+                className="bg-white text-blue-600 px-10 py-6 rounded-2xl font-black text-xl inline-flex items-center gap-3 hover:bg-navy-900 hover:text-white transition-all transform hover:scale-105"
+              >
+                SOLICITAR PRESUPUESTO <ChevronRight />
               </Link>
-            ))}
+            </div>
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }
