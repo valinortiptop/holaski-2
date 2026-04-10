@@ -1,98 +1,89 @@
 // @ts-nocheck
+// src/pages/ResortsPage.tsx
 import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Resort } from '../types/database';
-import { Search, MapPin, Mountain, Layers, Wind, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import type { Resort, DifficultyJson } from '../types/resort';
+import {
+  Search, MapPin, Mountain, Layers, Wind,
+  SlidersHorizontal, ArrowRight, AlertTriangle, RefreshCw
+} from 'lucide-react';
 
-const COUNTRY_NORMALIZE: Record<string, string> = {
-  'USA': 'EE.UU.',
-  'United States': 'EE.UU.',
-  'Estados Unidos': 'EE.UU.',
-  'EEUU': 'EE.UU.',
-  'EE.UU': 'EE.UU.',
-  'Canada': 'Canadá',
-  'France': 'Francia',
-  'Switzerland': 'Suiza',
+const COUNTRY_MAP: Record<string, string> = {
+  'USA': 'EE.UU.', 'United States': 'EE.UU.', 'Estados Unidos': 'EE.UU.',
+  'EEUU': 'EE.UU.', 'EE.UU': 'EE.UU.', 'EE.UU.': 'EE.UU.',
+  'Canada': 'Canadá', 'Canadá': 'Canadá',
+  'France': 'Francia', 'Francia': 'Francia',
+  'Switzerland': 'Suiza', 'Suiza': 'Suiza',
   'Austria': 'Austria',
-  'Italy': 'Italia',
-  'Spain': 'España',
+  'Italy': 'Italia', 'Italia': 'Italia',
+  'Spain': 'España', 'España': 'España',
   'Andorra': 'Andorra',
-  'Japan': 'Japón',
-  'Argentina': 'Argentina',
-  'Chile': 'Chile',
+  'Japan': 'Japón', 'Japón': 'Japón',
+  'Norway': 'Noruega', 'Noruega': 'Noruega',
+  'Sweden': 'Suecia', 'Suecia': 'Suecia',
+  'Argentina': 'Argentina', 'Chile': 'Chile',
 };
 
-function normalizeCountry(raw: string): string {
-  if (!raw) return '';
-  return COUNTRY_NORMALIZE[raw] || raw;
+function normCountry(raw: string): string {
+  return COUNTRY_MAP[raw] || raw;
 }
 
 const CONTINENT_MAP: Record<string, string> = {
-  'Francia': 'Europa',
-  'Suiza': 'Europa',
-  'Austria': 'Europa',
-  'Italia': 'Europa',
-  'Andorra': 'Europa',
-  'España': 'Europa',
-  'EE.UU.': 'Norteamérica',
-  'Canadá': 'Norteamérica',
-  'Argentina': 'Sudamérica',
-  'Chile': 'Sudamérica',
+  'Francia': 'Europa', 'Suiza': 'Europa', 'Austria': 'Europa',
+  'Italia': 'Europa', 'Andorra': 'Europa', 'España': 'Europa',
+  'Noruega': 'Europa', 'Suecia': 'Europa',
+  'EE.UU.': 'Norteamérica', 'Canadá': 'Norteamérica',
+  'Argentina': 'Sudamérica', 'Chile': 'Sudamérica',
   'Japón': 'Asia',
 };
 
 function getContinent(country: string): string {
-  return CONTINENT_MAP[normalizeCountry(country)] || 'Otros';
+  return CONTINENT_MAP[normCountry(country)] || 'Otros';
 }
 
-interface DifficultyJson {
-  beginner: number;
-  intermediate: number;
-  advanced: number;
+function parseDiff(raw: DifficultyJson | string | null | undefined): DifficultyJson {
+  const fallback: DifficultyJson = { beginner: 33, intermediate: 34, advanced: 33 };
+  if (!raw) return fallback;
+  if (typeof raw === 'object' && raw !== null) return raw as DifficultyJson;
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) as DifficultyJson; } catch { return fallback; }
+  }
+  return fallback;
 }
 
-function useDebounce<T>(value: T, delay: number): T {
+function useDebounce<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
+    const timer = setTimeout(() => setDebounced(value), ms);
     return () => clearTimeout(timer);
-  }, [value, delay]);
+  }, [value, ms]);
   return debounced;
 }
 
 const SkeletonCard = memo(function SkeletonCard() {
   return (
     <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden animate-pulse">
-      <div className="h-56 bg-white/5" />
-      <div className="p-6 space-y-4">
+      <div className="h-56 bg-white/[0.08]" />
+      <div className="p-5 space-y-4">
         <div className="h-5 bg-white/10 rounded-lg w-3/4" />
-        <div className="h-3 bg-white/5 rounded w-full" />
-        <div className="h-3 bg-white/5 rounded w-2/3" />
+        <div className="h-3 bg-white/[0.06] rounded w-full" />
+        <div className="h-3 bg-white/[0.06] rounded w-2/3" />
         <div className="flex gap-4 pt-4 border-t border-white/5">
-          <div className="h-8 w-16 bg-white/5 rounded" />
-          <div className="h-8 w-16 bg-white/5 rounded" />
+          <div className="h-8 w-16 bg-white/[0.06] rounded" />
+          <div className="h-8 w-16 bg-white/[0.06] rounded" />
+          <div className="h-8 w-16 bg-white/[0.06] rounded" />
         </div>
       </div>
     </div>
   );
 });
 
-const DifficultyDots = memo(function DifficultyDots({ difficulty }: { difficulty: DifficultyJson }) {
-  return (
-    <div className="flex gap-1 items-end h-5">
-      <div className="w-1.5 rounded-full bg-green-500" style={{ height: `${Math.max((difficulty?.beginner || 0) * 0.2, 4)}px` }} />
-      <div className="w-1.5 rounded-full bg-blue-500" style={{ height: `${Math.max((difficulty?.intermediate || 0) * 0.2, 4)}px` }} />
-      <div className="w-1.5 rounded-full bg-red-500" style={{ height: `${Math.max((difficulty?.advanced || 0) * 0.2, 4)}px` }} />
-    </div>
-  );
-});
+const IMG_FALLBACK = 'https://images.unsplash.com/photo-1522926193341-e9ffd686c60f?w=800';
 
 const ResortCard = memo(function ResortCard({ resort }: { resort: Resort }) {
-  const normalized = normalizeCountry(resort.country);
-  const diff = (typeof resort.difficulty_json === 'string'
-    ? JSON.parse(resort.difficulty_json)
-    : resort.difficulty_json) as DifficultyJson;
+  const country = normCountry(resort.country);
+  const diff = parseDiff(resort.difficulty_json);
 
   return (
     <Link
@@ -101,47 +92,53 @@ const ResortCard = memo(function ResortCard({ resort }: { resort: Resort }) {
     >
       <div className="relative h-56 overflow-hidden flex-shrink-0">
         <img
-          src={resort.image_url}
+          src={resort.image_url || IMG_FALLBACK}
           alt={resort.name}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={(e) => { (e.target as HTMLImageElement).src = IMG_FALLBACK; }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
         <div className="absolute top-4 right-4 flex gap-0.5">
-          {[...Array(5)].map((_, i) => (
+          {[1, 2, 3, 4, 5].map(i => (
             <div
               key={i}
-              className={`w-1.5 h-1.5 rounded-full ${i < (resort.price_level || 3) ? 'bg-amber-400' : 'bg-white/10'}`}
+              className={`w-1.5 h-1.5 rounded-full ${i <= (resort.price_level || 2) ? 'bg-amber-400' : 'bg-white/10'}`}
             />
           ))}
         </div>
         <div className="absolute bottom-4 left-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
           <MapPin className="w-3 h-3 text-blue-400 flex-shrink-0" />
-          <span className="truncate max-w-[120px]">{normalized}</span>
+          <span className="truncate max-w-[140px]">{country}</span>
         </div>
       </div>
+
       <div className="p-5 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <h3 className="text-lg font-bold leading-tight line-clamp-1">{resort.name}</h3>
-          <DifficultyDots difficulty={diff} />
+          <h3 className="text-lg font-bold leading-tight line-clamp-1 break-words">{resort.name}</h3>
+          <div className="flex gap-1 items-end h-5 flex-shrink-0">
+            <div className="w-1.5 rounded-full bg-green-500" style={{ height: `${Math.max(diff.beginner * 0.2, 4)}px` }} />
+            <div className="w-1.5 rounded-full bg-blue-500" style={{ height: `${Math.max(diff.intermediate * 0.2, 4)}px` }} />
+            <div className="w-1.5 rounded-full bg-red-500" style={{ height: `${Math.max(diff.advanced * 0.2, 4)}px` }} />
+          </div>
         </div>
         <p className="text-white/40 text-xs mb-1 truncate">{resort.region}</p>
-        <p className="text-white/50 text-sm leading-relaxed line-clamp-2 mb-auto">
-          {resort.description}
+        <p className="text-white/50 text-sm leading-relaxed line-clamp-2 mb-auto break-words">
+          {resort.description || 'Estación de esquí de clase mundial.'}
         </p>
         <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/[0.06]">
-          <div className="flex gap-4">
-            <div className="flex items-center gap-1.5 text-xs text-white/50">
-              <Mountain className="w-3.5 h-3.5 text-blue-400/70" />
-              <span className="font-bold text-white/80">{resort.altitude_top}m</span>
+          <div className="flex gap-3 sm:gap-4">
+            <div className="flex items-center gap-1 text-xs text-white/50">
+              <Mountain className="w-3.5 h-3.5 text-blue-400/70 flex-shrink-0" />
+              <span className="font-bold text-white/80">{resort.altitude_top ?? '—'}m</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-white/50">
-              <Layers className="w-3.5 h-3.5 text-blue-400/70" />
-              <span className="font-bold text-white/80">{resort.runs_total}</span>
+            <div className="flex items-center gap-1 text-xs text-white/50">
+              <Layers className="w-3.5 h-3.5 text-blue-400/70 flex-shrink-0" />
+              <span className="font-bold text-white/80">{resort.runs_total ?? '—'}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-white/50">
-              <Wind className="w-3.5 h-3.5 text-blue-400/70" />
-              <span className="font-bold text-white/80">{resort.lifts_total}</span>
+            <div className="flex items-center gap-1 text-xs text-white/50">
+              <Wind className="w-3.5 h-3.5 text-blue-400/70 flex-shrink-0" />
+              <span className="font-bold text-white/80">{resort.lifts_total ?? '—'}</span>
             </div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300 flex-shrink-0">
@@ -156,34 +153,48 @@ const ResortCard = memo(function ResortCard({ resort }: { resort: Resort }) {
 export default function ResortsPage() {
   const [resorts, setResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [errMsg, setErrMsg] = useState('');
   const [searchRaw, setSearchRaw] = useState('');
   const [activeContinent, setActiveContinent] = useState('Todos');
   const [activeCountry, setActiveCountry] = useState('Todos');
 
   const search = useDebounce(searchRaw, 300);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchResorts() {
-      try {
-        const { data, error: dbError } = await supabase
-          .from('resorts')
-          .select('*')
-          .order('name');
-        if (dbError) throw dbError;
-        if (!cancelled && data) setResorts(data);
-      } catch {
-        if (!cancelled) {
-          setError(true);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const loadResorts = useCallback(async () => {
+    setLoading(true);
+    setErrMsg('');
+    try {
+      const { data, error } = await supabase
+        .from('resorts')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('[HolaSki] Supabase query error:', error);
+        setErrMsg(`Error de base de datos: ${error.message}`);
+        return;
       }
+
+      if (!data || data.length === 0) {
+        console.warn('[HolaSki] resorts table returned 0 rows');
+        setErrMsg('La tabla de estaciones está vacía. Verifica que las migraciones SQL se ejecutaron correctamente.');
+        return;
+      }
+
+      console.log(`[HolaSki] Loaded ${data.length} resorts from database`);
+      setResorts(data as Resort[]);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error de conexión desconocido';
+      console.error('[HolaSki] Network error:', msg);
+      setErrMsg(`No se pudo conectar a la base de datos: ${msg}`);
+    } finally {
+      setLoading(false);
     }
-    fetchResorts();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    loadResorts();
+  }, [loadResorts]);
 
   const continents = useMemo(() => {
     const set = new Set<string>();
@@ -191,13 +202,12 @@ export default function ResortsPage() {
     return ['Todos', ...Array.from(set).sort()];
   }, [resorts]);
 
-  const countriesForContinent = useMemo(() => {
-    const set = new Set<string>();
-    const baseList = activeContinent === 'Todos' 
-      ? resorts 
+  const countries = useMemo(() => {
+    const base = activeContinent === 'Todos'
+      ? resorts
       : resorts.filter(r => getContinent(r.country) === activeContinent);
-    
-    baseList.forEach(r => set.add(normalizeCountry(r.country)));
+    const set = new Set<string>();
+    base.forEach(r => set.add(normCountry(r.country)));
     return ['Todos', ...Array.from(set).sort()];
   }, [resorts, activeContinent]);
 
@@ -207,25 +217,26 @@ export default function ResortsPage() {
       list = list.filter(r => getContinent(r.country) === activeContinent);
     }
     if (activeCountry !== 'Todos') {
-      list = list.filter(r => normalizeCountry(r.country) === activeCountry);
+      list = list.filter(r => normCountry(r.country) === activeCountry);
     }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(r =>
         r.name.toLowerCase().includes(q) ||
-        normalizeCountry(r.country).toLowerCase().includes(q) ||
-        r.region.toLowerCase().includes(q)
+        normCountry(r.country).toLowerCase().includes(q) ||
+        r.region.toLowerCase().includes(q) ||
+        (r.description || '').toLowerCase().includes(q)
       );
     }
     return list;
   }, [resorts, activeContinent, activeCountry, search]);
 
-  const handleContinentChange = useCallback((c: string) => {
+  const handleContinentClick = useCallback((c: string) => {
     setActiveContinent(c);
     setActiveCountry('Todos');
   }, []);
 
-  const handleCountryChange = useCallback((c: string) => {
+  const handleCountryClick = useCallback((c: string) => {
     setActiveCountry(c);
   }, []);
 
@@ -235,13 +246,14 @@ export default function ResortsPage() {
 
   return (
     <div className="min-h-screen">
+      {/* Hero */}
       <div className="relative pt-24 pb-8 md:pt-32 md:pb-12 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 via-transparent to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto relative">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full mb-6">
               <Mountain className="w-3 h-3" />
-              {resorts.length} estaciones disponibles
+              {loading ? 'Cargando...' : `${resorts.length} estaciones`}
             </div>
             <h1 className="text-4xl md:text-6xl font-black leading-[1.05] mb-5">
               Nuestros{' '}
@@ -250,12 +262,13 @@ export default function ResortsPage() {
               </span>
             </h1>
             <p className="text-base md:text-lg text-white/50 max-w-2xl leading-relaxed">
-              Explora las mejores estaciones de esquí del mundo. Filtra por continente, país o busca por nombre para encontrar tu destino perfecto.
+              Explora las mejores estaciones de esquí del mundo. Filtra por continente, país o busca por nombre.
             </p>
           </div>
         </div>
       </div>
 
+      {/* Filters bar */}
       <div className="sticky top-16 md:top-20 z-30 bg-slate-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -269,13 +282,13 @@ export default function ResortsPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500/50 transition-colors placeholder:text-white/25"
               />
             </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               <SlidersHorizontal className="w-4 h-4 text-white/30 flex-shrink-0 mr-1" />
               {continents.map(c => (
                 <button
                   key={c}
-                  onClick={() => handleContinentChange(c)}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                  onClick={() => handleContinentClick(c)}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 min-h-[44px] ${
                     activeContinent === c
                       ? 'bg-blue-600 text-white'
                       : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80'
@@ -286,14 +299,13 @@ export default function ResortsPage() {
               ))}
             </div>
           </div>
-
-          {countriesForContinent.length > 2 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {countriesForContinent.map(c => (
+          {countries.length > 2 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {countries.map(c => (
                 <button
                   key={c}
-                  onClick={() => handleCountryChange(c)}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                  onClick={() => handleCountryClick(c)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex-shrink-0 min-h-[44px] ${
                     activeCountry === c
                       ? 'bg-white/15 text-white border border-white/20'
                       : 'bg-white/[0.03] text-white/40 hover:bg-white/[0.08] hover:text-white/60 border border-white/[0.06]'
@@ -307,37 +319,65 @@ export default function ResortsPage() {
         </div>
       </div>
 
+      {/* Main grid */}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        {error && (
-          <div className="mb-6 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-sm">
-            Error al cargar los datos. Por favor, intenta de nuevo más tarde.
+        {/* Error banner */}
+        {errMsg && (
+          <div className="mb-6 px-5 py-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-sm flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold mb-1">Error al cargar destinos</p>
+              <p className="text-amber-400/70 text-xs break-words">{errMsg}</p>
+            </div>
+            <button
+              onClick={loadResorts}
+              className="flex items-center gap-1.5 text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 min-h-[44px]"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Reintentar
+            </button>
           </div>
         )}
 
-        {loading ? (
+        {/* Loading state */}
+        {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 9 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        )}
+
+        {/* Empty DB state */}
+        {!loading && resorts.length === 0 && (
           <div className="text-center py-20">
             <Mountain className="w-16 h-16 text-white/10 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">Sin resultados</h3>
-            <p className="text-white/40 text-sm">
-              No encontramos estaciones que coincidan con tu búsqueda. Prueba con otros filtros.
+            <h3 className="text-xl font-bold mb-2">Sin datos en la base de datos</h3>
+            <p className="text-white/40 text-sm max-w-md mx-auto">
+              La tabla &quot;resorts&quot; está vacía. Verifica que las migraciones SQL de seed se ejecutaron correctamente.
             </p>
           </div>
-        ) : (
+        )}
+
+        {/* No filter results */}
+        {!loading && resorts.length > 0 && filtered.length === 0 && (
+          <div className="text-center py-20">
+            <Search className="w-16 h-16 text-white/10 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">Sin resultados</h3>
+            <p className="text-white/40 text-sm">
+              No encontramos estaciones con esos filtros. Prueba con otra búsqueda.
+            </p>
+          </div>
+        )}
+
+        {/* Results grid */}
+        {!loading && filtered.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-white/40">
-                {filtered.length} {filtered.length === 1 ? 'estación encontrada' : 'estaciones encontradas'}
-              </p>
-            </div>
+            <p className="text-sm text-white/40 mb-6">
+              {filtered.length} {filtered.length === 1 ? 'estación encontrada' : 'estaciones encontradas'}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map(resort => (
-                <ResortCard key={resort.id} resort={resort} />
+              {filtered.map(r => (
+                <ResortCard key={r.id} resort={r} />
               ))}
             </div>
           </>
