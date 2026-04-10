@@ -24,10 +24,7 @@ function DiffBar({ label, pct, color }: { label: string; pct: number; color: str
         <span>{pct}%</span>
       </div>
       <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${color}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -43,6 +40,8 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
+const IMG_FALLBACK = 'https://images.unsplash.com/photo-1522926193341-e9ffd686c60f?w=800';
+
 export default function ResortDetailPage() {
   const { slug } = useParams();
   const [resort, setResort] = useState<Resort | null>(null);
@@ -55,16 +54,20 @@ export default function ResortDetailPage() {
     async function fetchResort() {
       setLoading(true);
       setError('');
+
+      console.log('[HolaSki] Fetching resort detail for slug:', slug);
+
       try {
-        const { data, error: dbErr } = await supabase
+        const { data, error: dbErr, status } = await supabase
           .from('resorts')
           .select('*')
           .eq('slug', slug)
           .single();
 
+        console.log('[HolaSki] Detail response status:', status, 'Error:', dbErr, 'Name:', data?.name);
+
         if (dbErr) {
-          console.error('[HolaSki] Resort detail error:', dbErr);
-          setError(dbErr.message);
+          if (!cancelled) setError(dbErr.message);
           return;
         }
         if (!cancelled && data) {
@@ -110,20 +113,19 @@ export default function ResortDetailPage() {
   }
 
   const diff = parseDiff(resort.difficulty_json);
-  const imgFallback = 'https://images.unsplash.com/photo-1522926193341-e9ffd686c60f?w=800';
   const desnivel = (resort.altitude_top && resort.altitude_base)
     ? resort.altitude_top - resort.altitude_base
     : null;
 
   return (
     <div className="pb-20">
-      {/* Hero */}
+      {/* Hero image */}
       <div className="relative h-[50vh] md:h-[70vh]">
         <img
-          src={resort.image_url || imgFallback}
+          src={resort.image_url || IMG_FALLBACK}
           className="w-full h-full object-cover"
           alt={resort.name}
-          onError={(e) => { (e.target as HTMLImageElement).src = imgFallback; }}
+          onError={(e) => { (e.target as HTMLImageElement).src = IMG_FALLBACK; }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
 
@@ -149,11 +151,11 @@ export default function ResortDetailPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content grid */}
       <div className="max-w-7xl mx-auto px-4 mt-10 md:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Stats grid */}
+          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               icon={<Mountain className="w-5 h-5" />}
@@ -177,7 +179,7 @@ export default function ResortDetailPage() {
             />
           </div>
 
-          {/* Desnivel */}
+          {/* Desnivel highlight */}
           {desnivel && (
             <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 p-6 rounded-2xl flex items-center justify-between">
               <div>
@@ -210,7 +212,7 @@ export default function ResortDetailPage() {
                       alt={`${resort.name} ${idx + 1}`}
                       loading="lazy"
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                      onError={(e) => { (e.target as HTMLImageElement).src = imgFallback; }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = IMG_FALLBACK; }}
                     />
                   </div>
                 ))}
@@ -233,9 +235,11 @@ export default function ResortDetailPage() {
               ))}
             </div>
             <p className="text-white/40 text-xs mt-3">
-              {(resort.price_level || 2) <= 2 && 'Económico — ideal para presupuestos ajustados'}
-              {(resort.price_level || 2) === 3 && 'Moderado — buen equilibrio calidad-precio'}
-              {(resort.price_level || 2) >= 4 && 'Premium — experiencia de lujo'}
+              {(resort.price_level || 2) <= 2
+                ? 'Económico — ideal para presupuestos ajustados'
+                : (resort.price_level || 2) === 3
+                  ? 'Moderado — buen equilibrio calidad-precio'
+                  : 'Premium — experiencia de lujo'}
             </p>
           </div>
 
@@ -272,7 +276,7 @@ export default function ResortDetailPage() {
             </div>
           </div>
 
-          {/* CTA */}
+          {/* CTA button */}
           <Link
             to="/planner"
             className="block w-full bg-blue-600 hover:bg-blue-700 text-center py-4 rounded-2xl font-bold transition-colors min-h-[44px]"

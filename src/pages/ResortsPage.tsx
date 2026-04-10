@@ -154,6 +154,7 @@ export default function ResortsPage() {
   const [resorts, setResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const [searchRaw, setSearchRaw] = useState('');
   const [activeContinent, setActiveContinent] = useState('Todos');
   const [activeCountry, setActiveCountry] = useState('Todos');
@@ -163,30 +164,47 @@ export default function ResortsPage() {
   const loadResorts = useCallback(async () => {
     setLoading(true);
     setErrMsg('');
+    setDebugInfo('');
+
+    console.log('[HolaSki] Starting resorts fetch...');
+
     try {
-      const { data, error } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from('resorts')
         .select('*')
         .order('name');
 
+      console.log('[HolaSki] Response status:', status, statusText);
+      console.log('[HolaSki] Error:', error);
+      console.log('[HolaSki] Data length:', data?.length ?? 'null');
+
       if (error) {
-        console.error('[HolaSki] Supabase query error:', error);
-        setErrMsg(`Error de base de datos: ${error.message}`);
+        const detail = `Status: ${status} | Code: ${error.code} | ${error.message} | Hint: ${error.hint || 'none'} | Details: ${error.details || 'none'}`;
+        console.error('[HolaSki] Supabase error:', detail);
+        setErrMsg(error.message);
+        setDebugInfo(detail);
         return;
       }
 
-      if (!data || data.length === 0) {
-        console.warn('[HolaSki] resorts table returned 0 rows');
-        setErrMsg('La tabla de estaciones está vacía. Verifica que las migraciones SQL se ejecutaron correctamente.');
+      if (!data) {
+        setErrMsg('La consulta retornó null. Posible problema de conexión o RLS.');
+        setDebugInfo(`Status: ${status} ${statusText}`);
         return;
       }
 
-      console.log(`[HolaSki] Loaded ${data.length} resorts from database`);
+      if (data.length === 0) {
+        setErrMsg('La tabla "resorts" existe pero tiene 0 filas. Las migraciones de seed no se ejecutaron.');
+        setDebugInfo(`Status: ${status} — Query succeeded, 0 rows returned`);
+        return;
+      }
+
+      console.log('[HolaSki] Loaded', data.length, 'resorts. First:', data[0]?.name);
       setResorts(data as Resort[]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error de conexión desconocido';
-      console.error('[HolaSki] Network error:', msg);
-      setErrMsg(`No se pudo conectar a la base de datos: ${msg}`);
+      const msg = err instanceof Error ? err.message : 'Error de red desconocido';
+      console.error('[HolaSki] Network/catch error:', msg);
+      setErrMsg(`Error de conexión: ${msg}`);
+      setDebugInfo('Posible problema de red, CORS, o URL de Supabase incorrecta.');
     } finally {
       setLoading(false);
     }
@@ -246,7 +264,7 @@ export default function ResortsPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero */}
+      {/* Hero header */}
       <div className="relative pt-24 pb-8 md:pt-32 md:pb-12 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 via-transparent to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto relative">
@@ -268,7 +286,7 @@ export default function ResortsPage() {
         </div>
       </div>
 
-      {/* Filters bar */}
+      {/* Sticky filter bar */}
       <div className="sticky top-16 md:top-20 z-30 bg-slate-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -279,25 +297,27 @@ export default function ResortsPage() {
                 placeholder="Buscar estación, país o región..."
                 value={searchRaw}
                 onChange={handleSearchChange}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500/50 transition-colors placeholder:text-white/25"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500/50 transition-colors placeholder:text-white/25 min-h-[44px]"
               />
             </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              <SlidersHorizontal className="w-4 h-4 text-white/30 flex-shrink-0 mr-1" />
-              {continents.map(c => (
-                <button
-                  key={c}
-                  onClick={() => handleContinentClick(c)}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 min-h-[44px] ${
-                    activeContinent === c
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            {resorts.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <SlidersHorizontal className="w-4 h-4 text-white/30 flex-shrink-0 mr-1" />
+                {continents.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => handleContinentClick(c)}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 min-h-[44px] ${
+                      activeContinent === c
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {countries.length > 2 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -319,26 +339,31 @@ export default function ResortsPage() {
         </div>
       </div>
 
-      {/* Main grid */}
+      {/* Content area */}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        {/* Error banner */}
+        {/* Error state */}
         {errMsg && (
-          <div className="mb-6 px-5 py-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-sm flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="font-bold mb-1">Error al cargar destinos</p>
-              <p className="text-amber-400/70 text-xs break-words">{errMsg}</p>
+          <div className="mb-8 px-5 py-5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold mb-1">Error al cargar destinos</p>
+                <p className="text-red-400/80 text-xs break-words">{errMsg}</p>
+                {debugInfo && (
+                  <p className="text-red-400/50 text-[11px] mt-2 font-mono break-words">{debugInfo}</p>
+                )}
+              </div>
             </div>
             <button
               onClick={loadResorts}
-              className="flex items-center gap-1.5 text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 min-h-[44px]"
+              className="flex items-center gap-1.5 text-xs font-bold bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-lg transition-colors min-h-[44px]"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Reintentar
             </button>
           </div>
         )}
 
-        {/* Loading state */}
+        {/* Loading skeleton grid */}
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 9 }).map((_, i) => (
@@ -347,13 +372,13 @@ export default function ResortsPage() {
           </div>
         )}
 
-        {/* Empty DB state */}
-        {!loading && resorts.length === 0 && (
+        {/* Empty database state */}
+        {!loading && !errMsg && resorts.length === 0 && (
           <div className="text-center py-20">
             <Mountain className="w-16 h-16 text-white/10 mx-auto mb-4" />
             <h3 className="text-xl font-bold mb-2">Sin datos en la base de datos</h3>
             <p className="text-white/40 text-sm max-w-md mx-auto">
-              La tabla &quot;resorts&quot; está vacía. Verifica que las migraciones SQL de seed se ejecutaron correctamente.
+              La tabla &quot;resorts&quot; está vacía. Las migraciones SQL de seed necesitan ejecutarse.
             </p>
           </div>
         )}
