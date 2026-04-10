@@ -1,24 +1,23 @@
 // @ts-nocheck
-// src/App.tsx
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
-import DestinosPage from './pages/DestinosPage';
 import TripPlannerPage from './pages/TripPlannerPage';
-import { Toaster } from 'sonner';
+import ResortsPage from './pages/ResortsPage';
+import ResortDetailPage from './pages/ResortDetailPage';
 
 function App() {
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-blue-500/30">
+    <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-blue-500/30">
       <Navbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/destinos" element={<DestinosPage />} />
         <Route path="/planner" element={<TripPlannerPage />} />
+        <Route path="/resorts" element={<ResortsPage />} />
+        <Route path="/resort/:slug" element={<ResortDetailPage />} />
       </Routes>
       <Footer />
-      <Toaster position="bottom-right" theme="dark" />
     </div>
   );
 }

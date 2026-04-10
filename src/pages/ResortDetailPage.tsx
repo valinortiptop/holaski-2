@@ -1,161 +1,108 @@
-// src/pages/ResortDetailPage.tsx
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, Mountain, Snowflake, Clock, Users, ArrowLeft, Sparkles, Loader2, ChevronDown, ChevronUp, Thermometer, Plane, Utensils } from 'lucide-react';
+// @ts-nocheck
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { FALLBACK_RESORTS } from '../data/resorts';
+import { Resort } from '../types/database';
+import { Loader2, MapPin, Wind, Mountain, Layers, ChevronLeft, Calendar } from 'lucide-react';
 
 export default function ResortDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [resort, setResort] = useState<any>(null);
-  const [info, setInfo] = useState<any>(null);
-  const [loadingInfo, setLoadingInfo] = useState(false);
-  const [showMore, setShowMore] = useState(false);
+  const { slug } = useParams();
+  const [resort, setResort] = useState<Resort | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    const found = FALLBACK_RESORTS.find(r => r.id === id);
-    setResort(found || FALLBACK_RESORTS[0]);
-
-    const loadFromDB = async () => {
-      try {
-        const { data } = await supabase.from('ski_resorts').select('*').eq('id', id).single();
-        if (data) {
-          const f = FALLBACK_RESORTS.find(r => r.id === id);
-          setResort({ ...f, ...data });
-        }
-      } catch {}
-    };
-    loadFromDB();
-  }, [id]);
-
-  const loadAIInfo = async () => {
-    if (info || !resort) return;
-    setLoadingInfo(true);
-    try {
-      const { data } = await supabase.functions.invoke('api-handler', {
-        body: { action: 'ai-resort-info', resortName: resort.name, country: resort.country }
-      });
-      if (data?.info && Object.keys(data.info).length > 0) {
-        setInfo(data.info);
-      } else {
-        setInfo({ elevation_top: resort.elevation || '3,000m', total_runs: resort.runs || 150, lifts: resort.lifts || 30, snowfall_annual: '300cm+', season: 'Nov - Abr', best_month: 'Febrero', avg_temp: '-8°C', nearby_airport: 'Aeropuerto Regional', transfer_time: '2h', top_restaurants: ['Restaurant Local 1', 'Restaurant Local 2'], top_activities: ['Esquí nocturno', 'Snowboard park', 'Spa y wellness'], tips: ['Reserva con anticipación en temporada alta', 'Las mejores condiciones son en febrero'] });
-      }
-    } catch {
-      setInfo({ elevation_top: resort?.elevation || '3,000m', total_runs: resort?.runs || 150, lifts: resort?.lifts || 30, season: 'Nov - Abr', best_month: 'Febrero' });
+    async function fetchResort() {
+      const { data, error } = await supabase
+        .from('resorts')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+      
+      if (!error && data) setResort(data);
+      setLoading(false);
     }
-    setLoadingInfo(false);
-  };
+    fetchResort();
+  }, [slug]);
 
-  if (!resort) return (
-    <div className="pt-24 pb-16 min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
     </div>
   );
 
+  if (!resort) return <div className="text-center py-40">Estación no encontrada.</div>;
+
   return (
-    <div className="pt-0 min-h-screen">
-      <div className="relative h-[60vh] min-h-[400px]">
-        <img src={resort.image_url} alt={resort.name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1628] via-[#0B1628]/50 to-transparent" />
-        <div className="absolute top-24 left-4 sm:left-8">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm hover:bg-white/20 transition">
-            <ArrowLeft className="w-4 h-4" /> Volver
-          </button>
+    <div className="pb-20">
+      <div className="relative h-[60vh] md:h-[70vh]">
+        <img src={resort.image_url} className="w-full h-full object-cover" alt={resort.name} />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+        <div className="absolute top-32 left-4 md:left-8">
+          <Link to="/resorts" className="inline-flex items-center gap-2 text-sm font-bold bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-full transition-colors">
+            <ChevronLeft className="w-4 h-4" /> Volver
+          </Link>
         </div>
-        <div className="absolute bottom-8 left-4 sm:left-8 right-4 sm:right-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2 text-sm text-gray-300 mb-2"><MapPin className="w-4 h-4" />{resort.country}</div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-3">{resort.name}</h1>
-            <div className="flex flex-wrap items-center gap-4">
-              {resort.rating && <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="font-semibold">{resort.rating}</span></div>}
-              {resort.difficulty && <span className="bg-blue-500/20 text-blue-300 rounded-lg px-3 py-1.5 text-sm">{resort.difficulty}</span>}
-              {resort.price_from && <span className="text-2xl font-bold text-blue-400">{resort.price_from}<span className="text-sm text-gray-400 font-normal"> / persona</span></span>}
-            </div>
+        <div className="absolute bottom-12 left-4 md:left-12 max-w-4xl">
+          <div className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-blue-400 bg-blue-400/10 border border-blue-400/20 px-3 py-1 rounded-full mb-4">
+            <MapPin className="w-3 h-3" /> {resort.region}, {resort.country}
           </div>
+          <h1 className="text-5xl md:text-7xl font-black mb-6">{resort.name}</h1>
+          <p className="text-xl text-white/80 leading-relaxed max-w-2xl">{resort.description}</p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          {[
-            { icon: Mountain, label: 'Elevación', val: resort.elevation || '3,000m' },
-            { icon: Snowflake, label: 'Pistas', val: `${resort.runs || 150}+` },
-            { icon: Users, label: 'Teleféricos', val: `${resort.lifts || 30}` },
-            { icon: Clock, label: 'Temporada', val: 'Nov - Abr' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-              <s.icon className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-              <div className="text-xl font-bold">{s.val}</div>
-              <div className="text-xs text-gray-500 mt-1">{s.label}</div>
+      <div className="max-w-7xl mx-auto px-4 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard icon={<Mountain className="w-5 h-5" />} label="Cota Máxima" value={`${resort.altitude_top}m`} />
+            <StatCard icon={<Layers className="w-5 h-5" />} label="Pistas" value={resort.runs_total} />
+            <StatCard icon={<Wind className="w-5 h-5" />} label="Remontes" value={resort.lifts_total} />
+            <StatCard icon={<Calendar className="w-5 h-5" />} label="País" value={resort.country} />
+          </div>
+
+          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+            <h3 className="text-xl font-bold mb-6">Dificultad de Pistas</h3>
+            <div className="space-y-6">
+              <DifficultyBar label="Principiante" percentage={resort.difficulty_json.beginner} color="bg-green-500" />
+              <DifficultyBar label="Intermedio" percentage={resort.difficulty_json.intermediate} color="bg-blue-500" />
+              <DifficultyBar label="Avanzado" percentage={resort.difficulty_json.advanced} color="bg-red-500" />
             </div>
-          ))}
+          </div>
         </div>
 
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Sobre {resort.name}</h2>
-          <p className="text-gray-400 text-lg leading-relaxed">{resort.description}</p>
+        <div className="space-y-6">
+          <div className="bg-blue-600 p-8 rounded-3xl">
+            <h3 className="text-2xl font-bold mb-4">¿Quieres ir aquí?</h3>
+            <p className="text-white/80 mb-6">Deja que nuestra IA planifique el viaje perfecto a {resort.name}.</p>
+            <Link to="/planner" className="block w-full bg-white text-blue-600 text-center py-4 rounded-xl font-bold hover:bg-blue-50 transition-colors">
+              Planificar con IA
+            </Link>
+          </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="mb-12">
-          <button onClick={() => { setShowMore(!showMore); if (!info) loadAIInfo(); }} className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-6 py-3 rounded-xl font-semibold transition-all">
-            <Sparkles className="w-4 h-4" />
-            {showMore ? 'Ocultar' : 'Ver más info con AI'}
-            {loadingInfo ? <Loader2 className="w-4 h-4 animate-spin" /> : showMore ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+function StatCard({ icon, label, value }: { icon: any, label: string, value: string | number }) {
+  return (
+    <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
+      <div className="text-blue-400 mb-2">{icon}</div>
+      <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-xl font-black">{value}</div>
+    </div>
+  );
+}
 
-          {showMore && (
-            <div className="mt-6 space-y-6 animate-fade-up">
-              {loadingInfo ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[1,2,3].map(i => <div key={i} className="h-40 bg-white/5 rounded-xl animate-shimmer" />)}
-                </div>
-              ) : info ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {info.avg_temp && (
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3"><Thermometer className="w-5 h-5 text-blue-400" /><h3 className="font-semibold">Clima</h3></div>
-                        <p className="text-gray-400 text-sm">Temp. promedio: {info.avg_temp}</p>
-                        {info.snowfall_annual && <p className="text-gray-400 text-sm">Nevada anual: {info.snowfall_annual}</p>}
-                        {info.best_month && <p className="text-gray-400 text-sm">Mejor mes: {info.best_month}</p>}
-                      </div>
-                    )}
-                    {info.nearby_airport && (
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3"><Plane className="w-5 h-5 text-blue-400" /><h3 className="font-semibold">Acceso</h3></div>
-                        <p className="text-gray-400 text-sm">Aeropuerto: {info.nearby_airport}</p>
-                        {info.transfer_time && <p className="text-gray-400 text-sm">Traslado: {info.transfer_time}</p>}
-                      </div>
-                    )}
-                    {info.top_restaurants && (
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3"><Utensils className="w-5 h-5 text-blue-400" /><h3 className="font-semibold">Gastronomía</h3></div>
-                        <ul className="space-y-1">{info.top_restaurants.map((r: string, i: number) => <li key={i} className="text-gray-400 text-sm">• {r}</li>)}</ul>
-                      </div>
-                    )}
-                  </div>
-                  {info.tips && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
-                      <h3 className="font-semibold text-blue-400 mb-2">💡 Tips de Viaje</h3>
-                      <ul className="space-y-1">{info.tips.map((t: string, i: number) => <li key={i} className="text-gray-300 text-sm">• {t}</li>)}</ul>
-                    </div>
-                  )}
-                </>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button onClick={() => navigate('/planear')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl font-semibold transition text-lg">
-            <Sparkles className="w-5 h-5" /> Planear Viaje a {resort.name}
-          </button>
-          <button onClick={() => navigate('/contacto')} className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-8 py-4 rounded-xl font-semibold transition text-lg">
-            Hablar con Experto
-          </button>
-        </div>
+function DifficultyBar({ label, percentage, color }: { label: string, percentage: number, color: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm font-bold">
+        <span className="text-white/60">{label}</span>
+        <span>{percentage}%</span>
+      </div>
+      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${percentage}%` }} />
       </div>
     </div>
   );
