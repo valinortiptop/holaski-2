@@ -1,4 +1,10 @@
 // @ts-nocheck
+export interface ResortDifficulty {
+  principiante: number;
+  intermedio: number;
+  avanzado: number;
+  experto: number;
+}
 
 export interface Resort {
   id: string;
@@ -10,20 +16,15 @@ export interface Resort {
   altitude_base: number;
   runs_total: number;
   lifts_total: number;
-  difficulty_json: {
-    principiante: number;
-    intermedio: number;
-    avanzado: number;
-    experto: number;
-  };
-  description: string;
   price_level: number;
+  description: string;
+  difficulty_json: ResortDifficulty;
   image_url: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface Lead {
-  id?: string;
+  id: string;
   first_name: string;
   email: string;
   destination: string;
@@ -32,6 +33,6 @@ export interface Lead {
   passengers_children: number;
   skill_level: string;
   budget_range: string;
-  message?: string;
-  created_at?: string;
+  message: string;
+  created_at: string;
 }

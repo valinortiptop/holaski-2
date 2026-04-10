@@ -1,10 +1,6 @@
 
--- Clear existing resorts to ensure a clean state
 TRUNCATE resorts RESTART IDENTITY CASCADE;
 
--- ═══════════════════════════════════════
--- 🇫🇷 FRANCIA (ESTACIONES PRINCIPALES)
--- ═══════════════════════════════════════
 INSERT INTO resorts (slug, name, region, country, altitude_top, altitude_base, runs_total, lifts_total, price_level, description, difficulty_json, image_url) VALUES
 ('courchevel', 'Courchevel', 'Les 3 Vallées', 'Francia', 2738, 1300, 150, 58, 5, 'El resort más lujoso de los Alpes. Gastronomía Michelin, boutiques de diseño y pistas perfectamente preparadas en Les 3 Vallées.', '{"principiante": 25, "intermedio": 35, "avanzado": 30, "experto": 10}', 'https://images.unsplash.com/photo-1548783300-70b41bc80b46?auto=format&fit=crop&q=80&w=1200'),
 ('val-thorens', 'Val Thorens', 'Les 3 Vallées', 'Francia', 3230, 2300, 150, 33, 4, 'La estación más alta de Europa a 2,300m. Nieve garantizada de noviembre a mayo con acceso a 600km en Les 3 Vallées.', '{"principiante": 20, "intermedio": 40, "avanzado": 25, "experto": 15}', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=1200'),
@@ -15,31 +11,14 @@ INSERT INTO resorts (slug, name, region, country, altitude_top, altitude_base, r
 ('alpe-dhuez', 'Alpe d''Huez', 'Alpes Franceses', 'Francia', 3330, 1860, 132, 68, 3, 'Famosa por sus 300 días de sol al año y la pista negra más larga de Europa: la Sarenne con 16km de descenso ininterrumpido.', '{"principiante": 25, "intermedio": 35, "avanzado": 25, "experto": 15}', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=1200'),
 ('meribel', 'Méribel', 'Les 3 Vallées', 'Francia', 2952, 1450, 150, 51, 4, 'El corazón de Les 3 Vallées con chalets tradicionales de madera. Sede de las finales de Copa del Mundo de Esquí.', '{"principiante": 30, "intermedio": 40, "avanzado": 20, "experto": 10}', 'https://images.unsplash.com/photo-1610647752706-3bb12232b3ab?auto=format&fit=crop&q=80&w=1200'),
 ('les-arcs', 'Les Arcs', 'Paradiski', 'Francia', 3226, 1200, 200, 54, 3, 'Cuatro altitudes conectadas a La Plagne por el Vanoise Express. Arquitectura innovadora y 425km de pistas en Paradiski.', '{"principiante": 25, "intermedio": 35, "avanzado": 25, "experto": 15}', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1200'),
-('la-plagne', 'La Plagne', 'Paradiski', 'Francia', 3250, 1250, 225, 109, 3, 'Uno de los resorts más grandes del mundo, parte de Paradiski con 425km de pistas. Incluye pista olímpica de bobsled.', '{"principiante": 30, "intermedio": 40, "avanzado": 20, "experto": 10}', 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?auto=format&fit=crop&q=80&w=1200');
-
--- ═══════════════════════════════════════
--- 🇺🇸 ESTADOS UNIDOS & 🇨🇦 CANADÁ
--- ═══════════════════════════════════════
-INSERT INTO resorts (slug, name, region, country, altitude_top, altitude_base, runs_total, lifts_total, price_level, description, difficulty_json, image_url) VALUES
+('la-plagne', 'La Plagne', 'Paradiski', 'Francia', 3250, 1250, 225, 109, 3, 'Uno de los resorts más grandes del mundo, parte de Paradiski con 425km de pistas. Incluye pista olímpica de bobsled.', '{"principiante": 30, "intermedio": 40, "avanzado": 20, "experto": 10}', 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?auto=format&fit=crop&q=80&w=1200'),
 ('vail', 'Vail', 'Colorado', 'EE.UU.', 3527, 2475, 195, 31, 5, 'Los legendarios Back Bowls ofrecen 1,200 hectáreas de terreno abierto. Vail es el resort más icónico de Colorado.', '{"principiante": 18, "intermedio": 29, "avanzado": 36, "experto": 17}', 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?auto=format&fit=crop&q=80&w=1200'),
 ('aspen-snowmass', 'Aspen Snowmass', 'Colorado', 'EE.UU.', 3813, 2473, 336, 43, 5, 'Cuatro montañas legendarias en una. Aspen combina esquí de élite, cultura vibrante y vida nocturna sofisticada.', '{"principiante": 20, "intermedio": 30, "avanzado": 30, "experto": 20}', 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&q=80&w=1200'),
 ('jackson-hole', 'Jackson Hole', 'Wyoming', 'EE.UU.', 3185, 1924, 133, 13, 4, 'Famoso por su terreno extremo y el legendario Corbet''s Couloir. Jackson Hole es el paraíso del esquiador experto.', '{"principiante": 10, "intermedio": 30, "avanzado": 30, "experto": 30}', 'https://images.unsplash.com/photo-1548035537-1e5b3932e4a5?auto=format&fit=crop&q=80&w=1200'),
-('whistler-blackcomb', 'Whistler Blackcomb', 'British Columbia', 'Canadá', 2284, 653, 200, 37, 5, 'El resort más grande de Norteamérica con dos montañas épicas conectadas por el Peak 2 Peak Gondola.', '{"principiante": 20, "intermedio": 35, "avanzado": 25, "experto": 20}', 'https://images.unsplash.com/photo-1544027410-6c92330df322?auto=format&fit=crop&q=80&w=1200');
-
--- ═══════════════════════════════════════
--- 🇨🇭 SUIZA & 🇦🇹 AUSTRIA & 🇮🇹 ITALIA
--- ═══════════════════════════════════════
-INSERT INTO resorts (slug, name, region, country, altitude_top, altitude_base, runs_total, lifts_total, price_level, description, difficulty_json, image_url) VALUES
+('whistler-blackcomb', 'Whistler Blackcomb', 'British Columbia', 'Canadá', 2284, 653, 200, 37, 5, 'El resort más grande de Norteamérica con dos montañas épicas conectadas por el Peak 2 Peak Gondola.', '{"principiante": 20, "intermedio": 35, "avanzado": 25, "experto": 20}', 'https://images.unsplash.com/photo-1544027410-6c92330df322?auto=format&fit=crop&q=80&w=1200'),
 ('zermatt', 'Zermatt', 'Valais', 'Suiza', 3899, 1620, 360, 52, 5, 'Bajo la sombra del Matterhorn, Zermatt ofrece el esquí a mayor altitud de Europa y conexión directa con Cervinia, Italia.', '{"principiante": 15, "intermedio": 45, "avanzado": 30, "experto": 10}', 'https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80&w=1200'),
 ('st-moritz', 'St. Moritz', 'Grisons', 'Suiza', 3303, 1850, 350, 56, 5, 'La cuna del turismo de invierno. Lujo, sol garantizado y el "Champagne climate" que hace su nieve única en el mundo.', '{"principiante": 20, "intermedio": 50, "avanzado": 20, "experto": 10}', 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?auto=format&fit=crop&q=80&w=1200'),
 ('st-anton', 'St. Anton', 'Tirol', 'Austria', 2811, 1304, 302, 88, 4, 'Cuna del esquí alpino moderno. St. Anton am Arlberg ofrece 302km de pistas y el après-ski más legendario de los Alpes.', '{"principiante": 20, "intermedio": 35, "avanzado": 30, "experto": 15}', 'https://images.unsplash.com/photo-1520942702018-0862200e6873?auto=format&fit=crop&q=80&w=1200'),
-('cortina-dampezzo', 'Cortina d''Ampezzo', 'Dolomitas', 'Italia', 2924, 1224, 120, 36, 4, 'La Reina de las Dolomitas. Paisajes declarados Patrimonio de la Humanidad por la UNESCO y sede olímpica 2026.', '{"principiante": 40, "intermedio": 40, "avanzado": 15, "experto": 5}', 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?auto=format&fit=crop&q=80&w=1200');
-
--- ═══════════════════════════════════════
--- 🇯🇵 JAPÓN & 🇦🇷 ARGENTINA / 🇨🇱 CHILE
--- ═══════════════════════════════════════
-INSERT INTO resorts (slug, name, region, country, altitude_top, altitude_base, runs_total, lifts_total, price_level, description, difficulty_json, image_url) VALUES
+('cortina-dampezzo', 'Cortina d''Ampezzo', 'Dolomitas', 'Italia', 2924, 1224, 120, 36, 4, 'La Reina de las Dolomitas. Paisajes declarados Patrimonio de la Humanidad por la UNESCO y sede olímpica 2026.', '{"principiante": 40, "intermedio": 40, "avanzado": 15, "experto": 5}', 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?auto=format&fit=crop&q=80&w=1200'),
 ('niseko-united', 'Niseko United', 'Hokkaido', 'Japón', 1308, 255, 30, 30, 4, 'Famosa mundialmente por su "Japow" (Japan Powder). Niseko recibe más de 15 metros de nieve ligera y seca cada temporada.', '{"principiante": 30, "intermedio": 40, "avanzado": 20, "experto": 10}', 'https://images.unsplash.com/photo-1549137701-97232204c3e8?auto=format&fit=crop&q=80&w=1200'),
 ('valle-nevado', 'Valle Nevado', 'Andes', 'Chile', 3670, 2860, 44, 14, 3, 'El dominio esquiable más grande del hemisferio sur. Esquí a gran altitud con nieve de excelente calidad durante el invierno austral.', '{"principiante": 10, "intermedio": 35, "avanzado": 40, "experto": 15}', 'https://images.unsplash.com/photo-1516108317508-6788f6a160e4?auto=format&fit=crop&q=80&w=1200');
-
--- (Nota: Se añaden más hasta completar los 76 en el despliegue real, aquí se muestran los pilares)
