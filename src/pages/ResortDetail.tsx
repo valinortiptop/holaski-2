@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useParams, Link } from 'react-router-dom';
 import { resorts } from '../data/resorts';
 import { ChevronLeft, Mountain, Wind, Thermometer, MapPin, Calendar, CheckCircle2 } from 'lucide-react';

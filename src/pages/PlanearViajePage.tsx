@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { Send, Calendar, Users, MapPin, Snowflake, CheckCircle2, DollarSign, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';

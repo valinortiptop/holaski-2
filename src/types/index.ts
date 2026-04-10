@@ -1,4 +1,3 @@
-// @ts-nocheck
 export interface Resort {
   id: string;
   slug: string;

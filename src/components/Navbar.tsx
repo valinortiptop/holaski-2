@@ -1,83 +1,85 @@
-// @ts-nocheck
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Mountain, Menu, X } from 'lucide-react';
-import { clsx } from 'clsx';
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 
-const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
+const LINKS = [
+  { label: 'Inicio', to: '/' },
+  { label: 'Destinos', to: '/destinos' },
+  { label: 'Paquetes', to: '/paquetes' },
+  { label: 'Contacto', to: '/contacto' },
+]
 
-  const navLinks = [
-    { name: 'Inicio', path: '/' },
-    { name: 'Destinos', path: '/destinos' },
-    { name: 'Paquetes', path: '/paquetes' },
-    { name: 'Planear Viaje', path: '/planear-viaje' },
-  ];
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false)
+  const [open, setOpen] = useState(false)
+  const loc = useLocation()
 
-  const isActive = (path: string) => location.pathname === path;
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 40)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+
+  useEffect(() => setOpen(false), [loc.pathname])
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-navy-950/80 backdrop-blur-md border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          <Link to="/" className="flex items-center gap-2">
-            <Mountain className="w-8 h-8 text-blue-500" />
-            <span className="text-2xl font-black tracking-tighter">SNOW SUMMIT</span>
+    <>
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        background: scrolled ? 'rgba(6,13,26,0.95)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : 'none',
+        transition: 'all 0.4s ease',
+        padding: scrolled ? '14px 0' : '22px 0',
+      }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{ width: 38, height: 38, background: '#2563eb', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>❄️</div>
+            <span style={{ fontSize: 22, fontWeight: 900, color: 'white', letterSpacing: '-0.04em' }}>
+              HOLA<span style={{ color: '#3b82f6' }}>SKI</span>
+            </span>
           </Link>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={clsx(
-                  "text-sm font-bold uppercase tracking-widest transition-colors",
-                  isActive(link.path) ? "text-blue-500" : "text-slate-300 hover:text-white"
-                )}
-              >
-                {link.name}
-              </Link>
+          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
+            {LINKS.map(l => (
+              <Link key={l.to} to={l.to} style={{
+                textDecoration: 'none', fontSize: 11, fontWeight: 800,
+                letterSpacing: '0.18em', textTransform: 'uppercase',
+                color: loc.pathname === l.to ? '#60a5fa' : '#94a3b8',
+                transition: 'color 0.2s'
+              }}>{l.label}</Link>
             ))}
-            <Link 
-              to="/planear-viaje"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all transform hover:scale-105"
-            >
-              SOLICITAR PRESUPUESTO
-            </Link>
+            <Link to="/planear" style={{
+              textDecoration: 'none', background: '#2563eb', color: 'white',
+              padding: '11px 24px', borderRadius: 999, fontSize: 11, fontWeight: 900,
+              letterSpacing: '0.15em', textTransform: 'uppercase'
+            }}>Planear Viaje</Link>
           </div>
 
-          {/* Mobile Button */}
-          <button 
-            className="md:hidden p-2 text-white"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
+          <button className="show-mobile" onClick={() => setOpen(!open)}
+            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 4 }}>
+            {open ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden bg-navy-950 border-b border-white/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-4">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={() => setIsOpen(false)}
-              className={clsx(
-                "block text-lg font-bold p-4 rounded-xl",
-                isActive(link.path) ? "bg-blue-600/10 text-blue-500" : "text-slate-300"
-              )}
-            >
-              {link.name}
-            </Link>
+      {open && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99, background: '#060d1a',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8
+        }}>
+          {LINKS.map(l => (
+            <Link key={l.to} to={l.to} style={{
+              fontSize: 28, fontWeight: 900, color: 'white', textDecoration: 'none',
+              textTransform: 'uppercase', letterSpacing: '-0.02em', padding: '12px 0'
+            }}>{l.label}</Link>
           ))}
+          <Link to="/planear" style={{
+            marginTop: 24, background: '#2563eb', color: 'white', textDecoration: 'none',
+            padding: '18px 40px', borderRadius: 16, fontWeight: 900, textTransform: 'uppercase', fontSize: 18
+          }}>Planear Viaje</Link>
         </div>
       )}
-    </nav>
-  );
-};
-
-export default Navbar;
+    </>
+  )
+}

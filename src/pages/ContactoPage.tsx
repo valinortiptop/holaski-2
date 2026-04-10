@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react'
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react'
 

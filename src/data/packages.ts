@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { TripPackage } from '../types';
 
 export const packages: TripPackage[] = [
