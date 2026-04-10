@@ -1,34 +1,68 @@
 // @ts-nocheck
-export interface Resort {
-  id: string;
-  slug: string;
-  name: string;
-  region: string;
-  country: string;
-  altitude_top: number;
-  altitude_base: number;
-  runs_total: number;
-  lifts_total: number;
-  difficulty_json: {
-    beginner: number;
-    intermediate: number;
-    advanced: number;
-  };
-  price_level: number;
-  image_url: string;
-  description: string;
-  created_at?: string;
+// src/types/database.ts
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      resorts: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          region: string | null
+          country: string
+          altitude_top: number | null
+          altitude_base: number | null
+          runs_total: number | null
+          lifts_total: number | null
+          difficulty_json: Json
+          price_level: number
+          image_url: string | null
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          name: string
+          region?: string | null
+          country: string
+          altitude_top?: number | null
+          altitude_base?: number | null
+          runs_total?: number | null
+          lifts_total?: number | null
+          difficulty_json?: Json
+          price_level?: number
+          image_url?: string | null
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name?: string
+          region?: string | null
+          country?: string
+          altitude_top?: number | null
+          altitude_base?: number | null
+          runs_total?: number | null
+          lifts_total?: number | null
+          difficulty_json?: Json
+          price_level?: number
+          image_url?: string | null
+          description?: string | null
+          created_at?: string
+        }
+      }
+    }
+  }
 }
 
-export interface Package {
-  id: string;
-  resort_id: string;
-  name: string;
-  description: string;
-  price_usd: number;
-  duration_days: number;
-  includes: string[];
-  image_url: string;
-  featured: boolean;
-  resort?: Resort;
-}
+export type Resort = Database['public']['Tables']['resorts']['Row'];
