@@ -1,4 +1,5 @@
 // @ts-nocheck
+// src/App.tsx
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -16,6 +17,8 @@ function App() {
         <Route path="/planner" element={<TripPlannerPage />} />
         <Route path="/resorts" element={<ResortsPage />} />
         <Route path="/resort/:slug" element={<ResortDetailPage />} />
+        <Route path="/destinos" element={<ResortsPage />} />
+        <Route path="/destinos/:slug" element={<ResortDetailPage />} />
       </Routes>
       <Footer />
     </div>
