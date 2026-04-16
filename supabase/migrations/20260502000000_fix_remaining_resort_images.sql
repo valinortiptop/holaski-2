@@ -1,0 +1,45 @@
+-- supabase/migrations/20260502000000_fix_remaining_resort_images.sql
+-- Update remaining resort images (Europe, South America, Asia) using Gemini-generated assets
+
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/baqueira-beret.webp?v=3' WHERE slug = 'baqueira-beret';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/big-white.webp?v=3' WHERE slug = 'big-white';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/chamonix.webp?v=3' WHERE slug = 'chamonix';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/val-thorens.webp?v=3' WHERE slug = 'val-thorens';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/zermatt.webp?v=3' WHERE slug = 'zermatt';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/ischgl.webp?v=3' WHERE slug = 'ischgl';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/grandvalira.webp?v=3' WHERE slug = 'grandvalira';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/st-moritz.webp?v=3' WHERE slug = 'st-moritz';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/courchevel.webp?v=3' WHERE slug = 'courchevel';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/verbier.webp?v=3' WHERE slug = 'verbier';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/cervinia.webp?v=3' WHERE slug = 'cervinia';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/cortina.webp?v=3' WHERE slug = 'cortina';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/val-disere.webp?v=3' WHERE slug = 'val-disere';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/meribel.webp?v=3' WHERE slug = 'meribel';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/tignes.webp?v=3' WHERE slug = 'tignes';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/la-plagne.webp?v=3' WHERE slug = 'la-plagne';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/les-arcs.webp?v=3' WHERE slug = 'les-arcs';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/alpe-dhuez.webp?v=3' WHERE slug = 'alpe-dhuez';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/les-deux-alpes.webp?v=3' WHERE slug = 'les-deux-alpes';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/serre-chevalier.webp?v=3' WHERE slug = 'serre-chevalier';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/megeve.webp?v=3' WHERE slug IN ('megeve', 'megève');
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/st-anton.webp?v=3' WHERE slug = 'st-anton';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/lech.webp?v=3' WHERE slug = 'lech';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/kitzbuhel.webp?v=3' WHERE slug IN ('kitzbuhel', 'kitzbühel');
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/mayrhofen.webp?v=3' WHERE slug = 'mayrhofen';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/solden.webp?v=3' WHERE slug IN ('solden', 'sölden');
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/saalbach.webp?v=3' WHERE slug = 'saalbach';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/crans-montana.webp?v=3' WHERE slug = 'crans-montana';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/davos.webp?v=3' WHERE slug = 'davos';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/saas-fee.webp?v=3' WHERE slug = 'saas-fee';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/grindelwald.webp?v=3' WHERE slug = 'grindelwald';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/livigno.webp?v=3' WHERE slug = 'livigno';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/selva-val-gardena.webp?v=3' WHERE slug = 'selva-val-gardena';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/madonna.webp?v=3' WHERE slug = 'madonna';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/sestriere.webp?v=3' WHERE slug = 'sestriere';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/valle-nevado.webp?v=3' WHERE slug = 'valle-nevado';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/cerro-catedral.webp?v=3' WHERE slug = 'cerro-catedral';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/las-lenas.webp?v=3' WHERE slug = 'las-lenas';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/cerro-castor.webp?v=3' WHERE slug = 'cerro-castor';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/portillo.webp?v=3' WHERE slug = 'portillo';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/niseko.webp?v=3' WHERE slug = 'niseko';
+UPDATE resorts SET image_url = 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/hakuba.webp?v=3' WHERE slug = 'hakuba';
