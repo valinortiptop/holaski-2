@@ -9,7 +9,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // ── CORS preflight MUST be first — before any env var checks ──────────
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: corsHeaders });
+  }
 
   const HOTELBEDS_API_KEY = Deno.env.get("HOTELBEDS_API_KEY");
   const HOTELBEDS_SECRET = Deno.env.get("HOTELBEDS_SECRET");
@@ -18,14 +21,14 @@ serve(async (req) => {
 
   if (!HOTELBEDS_API_KEY || !HOTELBEDS_SECRET) {
     return new Response(
-      JSON.stringify({ error: "Hotelbeds credentials not configured. Set HOTELBEDS_API_KEY and HOTELBEDS_SECRET as Supabase secrets." }),
+      JSON.stringify({ error: "Hotelbeds credentials not configured." }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
   if (!VALINOR_PROXY_URL || !VALINOR_PROXY_TOKEN) {
     return new Response(
-      JSON.stringify({ error: "Valinor proxy not configured. VALINOR_PROXY_URL and VALINOR_PROXY_TOKEN must be set." }),
+      JSON.stringify({ error: "Valinor proxy not configured." }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -211,6 +214,32 @@ Usa precios realistas en MXN para ${new Date().getFullYear()}. Solo responde con
         JSON.stringify({ package: packageData }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // ── Contact Form ──────────────────────────────────────────────────────
+    if (action === "send-contact") {
+      const { name, email, message } = body as { name: string; email: string; message: string };
+
+      const res = await fetch(`${VALINOR_PROXY_URL}`, {
+        method: "POST",
+        headers: { "x-proxy-token": VALINOR_PROXY_TOKEN, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "resend",
+          endpoint: "/emails",
+          payload: {
+            from: "HolaSki <onboarding@resend.dev>",
+            to: ["delivered@resend.dev"],
+            subject: `Nuevo contacto: ${name}`,
+            html: `<p><strong>${name}</strong> (${email}) escribió:</p><p>${message}</p>`,
+          },
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const data = await res.json();
+      return new Response(JSON.stringify({ success: true, data }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
