@@ -1,0 +1,2 @@
+const HOTELBEDS_API_KEY = Deno.env.get('HOTELBEDS_API_KEY') ?? ''
+const HOTELBEDS_SECRET = Deno.env.get('HOTELBEDS_SECRET') ?? ''

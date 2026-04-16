@@ -1,0 +1,2 @@
+supabase secrets set HOTELBEDS_API_KEY=e017e6436199af8134991a3c59ff13d2
+supabase secrets set HOTELBEDS_SECRET=b08aa0bef6
