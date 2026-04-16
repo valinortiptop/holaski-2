@@ -1,100 +1,138 @@
 // @ts-nocheck
-\s*/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    clearTimeout(timeout);
-    console.error("generate-package error:", (err as Error).message);
-    return {
-      resort_name: params.destination,
-      hotel: { name: "Hotel Valle Nevado", description: "Ski-in/ski-out premium", stars: 4 },
-      itinerary: [
-        { day: 1, activity: "Llegada y check-in", suggestion: "Descansa y aclimata" },
-        { day: 2, activity: "Clases + pistas verdes", suggestion: "Empieza suave" },
-        { day: 3, activity: "Pistas azules", suggestion: "Sube intensidad" },
-      ],
-      cost_breakdown: { hotel: 5800, ski_pass: 3200, equipment: 1500, total_per_person_usd: 10500 },
-    };
-  }
-}
+// supabase/functions/api-handler/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// ── Ping for diagnostics ──
-async function handlePing(): Promise<unknown> {
-  return { ok: true, time: new Date().toISOString() };
-}
-
-// ── Handler registry ──
-const handlers: Record<
-  string,
-  (p: Record<string, unknown>, u: string, t: string) => Promise<unknown>
-> = {
-  "search-hotels": handleSearchHotels,
-  "generate-package": handleGeneratePackage,
-  "ping": handlePing,
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Max-Age": "86400",
 };
 
-// ── Thin orchestrator ──
-// CRITICAL: OPTIONS MUST return 200 before ANY other logic can throw.
-serve(async (req: Request) => {
-  // 1. PREFLIGHT — absolute first priority, no deps, cannot fail
+const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
+
+function ok(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+}
+
+function err(msg: string, status = 400) {
+  return new Response(JSON.stringify({ error: msg }), { status, headers: JSON_HEADERS });
+}
+
+serve(async (req) => {
+  // ── 1. PREFLIGHT — must be first, zero deps, cannot throw ──
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: CORS });
   }
 
-  // 2. Only POST is accepted for actions
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "method_not_allowed" }),
-      { status: 405, headers: jsonHeaders },
-    );
-  }
+  if (req.method !== "POST") return err("method_not_allowed", 405);
 
-  // 3. Parse body safely
-  let body: Record<string, unknown>;
+  // ── 2. Parse body ──
+  let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: "invalid_json" }),
-      { status: 400, headers: jsonHeaders },
-    );
+    return err("invalid_json", 400);
   }
 
   const action = String(body.action ?? "");
-  const params = { ...body };
-  delete (params as Record<string, unknown>).action;
+  console.log("api-handler invoked, action:", action);
 
-  console.log("api-handler:", action);
+  // ── 3. Ping — no proxy needed ──
+  if (action === "ping") {
+    return ok({ ok: true, ts: new Date().toISOString() });
+  }
 
-  // 4. Env validation (AFTER preflight, so CORS works even if misconfigured)
-  const proxyUrl =
-    Deno.env.get("VALINOR_PROXY_URL") ??
-    "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
+  // ── 4. Env validation ──
+  const proxyUrl = Deno.env.get("VALINOR_PROXY_URL") ?? "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
   const proxyToken = Deno.env.get("VALINOR_PROXY_TOKEN");
 
-  if (!proxyToken && action !== "ping") {
-    return new Response(
-      JSON.stringify({ error: "proxy_not_configured" }),
-      { status: 503, headers: jsonHeaders },
-    );
+  if (!proxyToken) {
+    console.error("VALINOR_PROXY_TOKEN not set");
+    return err("proxy_not_configured", 503);
   }
 
-  // 5. Route to handler
-  const handler = handlers[action];
-  if (!handler) {
-    return new Response(
-      JSON.stringify({ error: "unknown_action", action }),
-      { status: 400, headers: jsonHeaders },
-    );
-  }
-
+  // ── 5. Route actions ──
   try {
-    const data = await handler(params, proxyUrl, proxyToken ?? "");
-    return new Response(JSON.stringify(data), { headers: jsonHeaders });
-  } catch (err) {
-    console.error("handler fatal:", action, (err as Error).message);
-    return new Response(
-      JSON.stringify({ error: "handler_failed", message: (err as Error).message }),
-      { status: 500, headers: jsonHeaders },
-    );
+    if (action === "search-hotels") {
+      return ok(await searchHotels(body, proxyUrl, proxyToken));
+    }
+    if (action === "generate-package") {
+      return ok(await generatePackage(body, proxyUrl, proxyToken));
+    }
+    if (action === "send-contact") {
+      return ok(await sendContact(body, proxyUrl, proxyToken));
+    }
+    return err(`unknown_action: ${action}`, 400);
+  } catch (e) {
+    console.error("action error:", action, (e as Error).message);
+    return err((e as Error).message, 500);
   }
 });
+
+// ── Helpers ──
+
+async function proxyPost(url: string, token: string, payload: unknown, timeoutMs = 20000) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-proxy-token": token },
+      body: JSON.stringify(payload),
+      signal: ac.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`proxy ${res.status}: ${txt.slice(0, 200)}`);
+    }
+    return await res.json();
+  } catch (e) {
+    clearTimeout(t);
+    throw e;
+  }
+}
+
+async function searchHotels(
+  p: Record<string, unknown>,
+  proxyUrl: string,
+  token: string,
+) {
+  try {
+    const data = await proxyPost(proxyUrl, token, {
+      provider: "hotelbeds",
+      path: "/hotel-api/1.0/hotels",
+      method: "POST",
+      payload: p,
+    });
+    return data;
+  } catch (e) {
+    console.error("searchHotels failed:", (e as Error).message);
+    return { hotels: [], error: (e as Error).message };
+  }
+}
+
+async function generatePackage(
+  p: Record<string, unknown>,
+  proxyUrl: string,
+  token: string,
+) {
+  const prompt = `Genera un paquete de esquí en JSON puro (sin markdown) para:
+Destino: ${p.destination}, Fechas: ${p.dates}, Viajeros: ${p.travelers}, Nivel: ${p.level}, Presupuesto: ${p.budget}
+
+Devuelve EXACTAMENTE este JSON (precios en MXN):
+{"resort_name":"...","hotel":{"name":"...","description":"...","stars":4},"itinerary":[{"day":1,"activity":"...","suggestion":"..."}],"cost_breakdown":{"hotel":0,"ski_pass":0,"equipment":0,"total_per_person_mxn":0}}`;
+
+  try {
+    const data = await proxyPost(proxyUrl, token, {
+      provider: "gemini",
+      endpoint: "/v1beta/openai/chat/completions",
+      payload: {
+        model: "gemini-2.0-flash",
+        messages: [{ role: "user", content: prompt }],
+      },
+    }, 30000);
+
+    const raw = data?.choices?.[0]?.message?.content ?? "{}";
+    const clean = raw.replace(/
