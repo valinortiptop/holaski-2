@@ -1,85 +1,88 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
-
-const LINKS = [
-  { label: 'Inicio', to: '/' },
-  { label: 'Destinos', to: '/destinos' },
-  { label: 'Paquetes', to: '/paquetes' },
-  { label: 'Contacto', to: '/contacto' },
-]
+// @ts-nocheck
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Snowflake, Sparkles } from 'lucide-react';
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [open, setOpen] = useState(false)
-  const loc = useLocation()
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40)
-    window.addEventListener('scroll', fn)
-    return () => window.removeEventListener('scroll', fn)
-  }, [])
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  useEffect(() => setOpen(false), [loc.pathname])
+  const navLinks = [
+    { name: 'Inicio', href: '/' },
+    { name: 'Destinos', href: '/resorts' },
+    { name: 'Planificador IA', href: '/planner', icon: Sparkles },
+  ];
 
   return (
-    <>
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        background: scrolled ? 'rgba(6,13,26,0.95)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : 'none',
-        transition: 'all 0.4s ease',
-        padding: scrolled ? '14px 0' : '22px 0',
-      }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <div style={{ width: 38, height: 38, background: '#2563eb', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>❄️</div>
-            <span style={{ fontSize: 22, fontWeight: 900, color: 'white', letterSpacing: '-0.04em' }}>
-              HOLA<span style={{ color: '#3b82f6' }}>SKI</span>
-            </span>
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-950/80 backdrop-blur-md border-b border-white/10 py-4' : 'bg-transparent py-6'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
+              <Snowflake className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-black tracking-tighter">SNOW<span className="text-blue-500">PRO</span></span>
           </Link>
 
-          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-            {LINKS.map(l => (
-              <Link key={l.to} to={l.to} style={{
-                textDecoration: 'none', fontSize: 11, fontWeight: 800,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: loc.pathname === l.to ? '#60a5fa' : '#94a3b8',
-                transition: 'color 0.2s'
-              }}>{l.label}</Link>
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                to={link.href}
+                className={`text-sm font-bold tracking-wide transition-colors flex items-center gap-1.5 ${
+                  location.pathname === link.href ? 'text-blue-400' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {link.icon && <link.icon className="w-3.5 h-3.5" />}
+                {link.name}
+              </Link>
             ))}
-            <Link to="/planear" style={{
-              textDecoration: 'none', background: '#2563eb', color: 'white',
-              padding: '11px 24px', borderRadius: 999, fontSize: 11, fontWeight: 900,
-              letterSpacing: '0.15em', textTransform: 'uppercase'
-            }}>Planear Viaje</Link>
+            <button className="bg-white text-slate-950 px-6 py-2.5 rounded-full text-sm font-bold hover:bg-blue-500 hover:text-white transition-all">
+              Mi Cuenta
+            </button>
           </div>
 
-          <button className="show-mobile" onClick={() => setOpen(!open)}
-            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 4 }}>
-            {open ? <X size={28} /> : <Menu size={28} />}
+          {/* Mobile Menu Button */}
+          <button 
+            className="md:hidden p-2 text-white"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? <X /> : <Menu />}
           </button>
         </div>
-      </nav>
+      </div>
 
-      {open && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 99, background: '#060d1a',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8
-        }}>
-          {LINKS.map(l => (
-            <Link key={l.to} to={l.to} style={{
-              fontSize: 28, fontWeight: 900, color: 'white', textDecoration: 'none',
-              textTransform: 'uppercase', letterSpacing: '-0.02em', padding: '12px 0'
-            }}>{l.label}</Link>
-          ))}
-          <Link to="/planear" style={{
-            marginTop: 24, background: '#2563eb', color: 'white', textDecoration: 'none',
-            padding: '18px 40px', borderRadius: 16, fontWeight: 900, textTransform: 'uppercase', fontSize: 18
-          }}>Planear Viaje</Link>
+      {/* Mobile Nav */}
+      {isOpen && (
+        <div className="md:hidden absolute top-full left-0 w-full bg-slate-950 border-b border-white/10 p-4 animate-in fade-in slide-in-from-top-4">
+          <div className="flex flex-col gap-4">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                to={link.href}
+                onClick={() => setIsOpen(false)}
+                className={`text-lg font-bold flex items-center gap-2 ${
+                  location.pathname === link.href ? 'text-blue-400' : 'text-white'
+                }`}
+              >
+                {link.icon && <link.icon className="w-4 h-4" />}
+                {link.name}
+              </Link>
+            ))}
+            <button className="bg-blue-600 text-white w-full py-4 rounded-xl font-bold mt-2">
+              Mi Cuenta
+            </button>
+          </div>
         </div>
       )}
-    </>
-  )
+    </nav>
+  );
 }
