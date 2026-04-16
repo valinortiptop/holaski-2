@@ -1,9 +1,13 @@
 // @ts-nocheck
+// src/pages/TripPlannerPage.tsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Sparkles, Calendar, Users, Target, Loader2, CheckCircle2, MapPin, ChevronRight, Hotel, Ticket, Gauge } from 'lucide-react';
+import { Sparkles, Calendar, Loader2, CheckCircle2, ChevronRight, Hotel, Ticket, Gauge } from 'lucide-react';
 import { toast } from 'sonner';
 import { Resort, GeneratedPlan } from '../types/database';
+
+const formatMXN = (amount: number) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(amount);
 
 export default function TripPlannerPage() {
   const [step, setStep] = useState(1);
@@ -14,14 +18,18 @@ export default function TripPlannerPage() {
     dates: '',
     travelers: '2',
     level: 'intermediate',
-    budget: 'moderate'
+    budget: 'moderate',
   });
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
 
   useEffect(() => {
     async function loadResorts() {
-      const { data } = await supabase.from('resorts').select('id, name').order('name');
-      if (data) setResorts(data as Resort[]);
+      try {
+        const { data } = await supabase.from('resorts').select('id, name').order('name');
+        if (data) setResorts(data as Resort[]);
+      } catch (err) {
+        console.error('loadResorts:', err);
+      }
     }
     loadResorts();
   }, []);
@@ -29,16 +37,16 @@ export default function TripPlannerPage() {
   const generatePlan = async () => {
     if (!config.resort_id) return toast.error('Selecciona una estación');
     if (!config.dates) return toast.error('Selecciona una fecha');
-    
+
     setLoading(true);
     try {
-      const selectedResort = resorts.find(r => r.id === config.resort_id);
+      const selectedResort = resorts.find((r) => r.id === config.resort_id);
       const { data, error } = await supabase.functions.invoke('api-handler', {
-        body: { 
-          action: 'generate-package', 
+        body: {
+          action: 'generate-package',
           destination: selectedResort?.name,
-          ...config 
-        }
+          ...config,
+        },
       });
       if (error) throw error;
       setPlan(data);
@@ -59,6 +67,7 @@ export default function TripPlannerPage() {
             <Sparkles className="w-3 h-3" /> Planificador IA
           </div>
           <h1 className="text-4xl font-black">Tu viaje <span className="text-blue-400">a medida</span></h1>
+          <p className="text-white/50 mt-2 text-sm">Precios estimados en pesos mexicanos (MXN)</p>
         </div>
 
         {step === 1 && (
@@ -66,32 +75,36 @@ export default function TripPlannerPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/40">Estación</label>
-                <select 
+                <select
                   value={config.resort_id}
-                  onChange={e => setConfig({...config, resort_id: e.target.value})}
+                  onChange={(e) => setConfig({ ...config, resort_id: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] appearance-none"
                 >
                   <option value="" className="bg-slate-900">Selecciona estación...</option>
-                  {resorts.map(r => <option key={r.id} value={r.id} className="bg-slate-900">{r.name}</option>)}
+                  {resorts.map((r) => (
+                    <option key={r.id} value={r.id} className="bg-slate-900">{r.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/40">Fecha Estimada</label>
-                <input 
+                <input
                   type="date"
                   value={config.dates}
-                  onChange={e => setConfig({...config, dates: e.target.value})}
+                  onChange={(e) => setConfig({ ...config, dates: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] text-white"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/40">Pasajeros</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {['1', '2', '4', '6'].map(num => (
+                  {['1', '2', '4', '6'].map((num) => (
                     <button
                       key={num}
-                      onClick={() => setConfig({...config, travelers: num})}
-                      className={`py-3 rounded-xl border transition-all ${config.travelers === num ? 'bg-blue-600 border-blue-500' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                      onClick={() => setConfig({ ...config, travelers: num })}
+                      className={`py-3 rounded-xl border transition-all min-h-[44px] ${
+                        config.travelers === num ? 'bg-blue-600 border-blue-500' : 'bg-white/5 border-white/10 hover:border-white/20'
+                      }`}
                     >
                       {num === '6' ? '6+' : num}
                     </button>
@@ -99,7 +112,7 @@ export default function TripPlannerPage() {
                 </div>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setStep(2)}
               disabled={!config.resort_id || !config.dates}
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-4 rounded-xl font-bold transition-all min-h-[48px] flex items-center justify-center gap-2"
@@ -114,9 +127,9 @@ export default function TripPlannerPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/40">Nivel de Esquí</label>
-                <select 
+                <select
                   value={config.level}
-                  onChange={e => setConfig({...config, level: e.target.value})}
+                  onChange={(e) => setConfig({ ...config, level: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] appearance-none"
                 >
                   <option value="beginner" className="bg-slate-900">Principiante</option>
@@ -126,9 +139,9 @@ export default function TripPlannerPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/40">Presupuesto</label>
-                <select 
+                <select
                   value={config.budget}
-                  onChange={e => setConfig({...config, budget: e.target.value})}
+                  onChange={(e) => setConfig({ ...config, budget: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] appearance-none"
                 >
                   <option value="budget" className="bg-slate-900">Económico</option>
@@ -138,13 +151,17 @@ export default function TripPlannerPage() {
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-4">
-              <button onClick={() => setStep(1)} className="flex-1 bg-white/5 hover:bg-white/10 py-4 rounded-xl font-bold min-h-[48px]">Atrás</button>
-              <button 
-                onClick={generatePlan} 
+              <button onClick={() => setStep(1)} className="flex-1 bg-white/5 hover:bg-white/10 py-4 rounded-xl font-bold min-h-[48px]">
+                Atrás
+              </button>
+              <button
+                onClick={generatePlan}
                 disabled={loading}
                 className="flex-[2] bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold flex items-center justify-center gap-2 min-h-[48px]"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
                     Generar Propuesta
@@ -166,33 +183,36 @@ export default function TripPlannerPage() {
             <div className="grid gap-6">
               <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
                 <div className="flex justify-between items-start mb-6">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-bold flex items-center gap-2">
-                      <Hotel className="w-5 h-5 text-blue-400" /> {plan.hotel.name}
+                      <Hotel className="w-5 h-5 text-blue-400 shrink-0" />
+                      <span className="truncate">{plan.hotel.name}</span>
                     </h3>
-                    <p className="text-sm text-white/50">{plan.hotel.description}</p>
+                    <p className="text-sm text-white/50 break-words">{plan.hotel.description}</p>
                   </div>
-                  <div className="flex text-yellow-500">
-                    {Array.from({length: plan.hotel.stars}).map((_, i) => <Sparkles key={i} className="w-3 h-3 fill-current" />)}
+                  <div className="flex text-yellow-500 shrink-0 ml-2">
+                    {Array.from({ length: plan.hotel.stars }).map((_, i) => (
+                      <Sparkles key={i} className="w-3 h-3 fill-current" />
+                    ))}
                   </div>
                 </div>
-                
+
                 <div className="space-y-3 pt-4 border-t border-white/5">
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50 flex items-center gap-2"><Hotel className="w-4 h-4" /> Alojamiento (est.)</span>
-                    <span>${plan.cost_breakdown.hotel}</span>
+                    <span>{formatMXN(plan.cost_breakdown.hotel)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50 flex items-center gap-2"><Ticket className="w-4 h-4" /> Ski Pass</span>
-                    <span>${plan.cost_breakdown.ski_pass}</span>
+                    <span>{formatMXN(plan.cost_breakdown.ski_pass)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50 flex items-center gap-2"><Gauge className="w-4 h-4" /> Equipos</span>
-                    <span>${plan.cost_breakdown.equipment}</span>
+                    <span>{formatMXN(plan.cost_breakdown.equipment)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-white/10">
                     <span className="font-bold">Total estimado por persona</span>
-                    <span className="text-2xl font-black text-blue-400">${plan.cost_breakdown.total_per_person_usd}</span>
+                    <span className="text-2xl font-black text-blue-400">{formatMXN(plan.cost_breakdown.total_per_person_usd)}</span>
                   </div>
                 </div>
               </div>
@@ -205,9 +225,9 @@ export default function TripPlannerPage() {
                       <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xs font-bold text-blue-400 shrink-0">
                         {item.day}
                       </div>
-                      <div>
-                        <p className="font-bold text-sm">{item.activity}</p>
-                        <p className="text-xs text-white/50">{item.suggestion}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm break-words">{item.activity}</p>
+                        <p className="text-xs text-white/50 break-words">{item.suggestion}</p>
                       </div>
                     </div>
                   ))}
@@ -215,9 +235,13 @@ export default function TripPlannerPage() {
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <button onClick={() => setStep(1)} className="flex-1 border border-white/10 hover:bg-white/5 py-4 rounded-xl font-bold min-h-[48px]">Empezar de nuevo</button>
-              <button className="flex-1 bg-white text-slate-950 hover:bg-white/90 py-4 rounded-xl font-bold min-h-[48px]">Reservar Ahora</button>
+            <div className="flex flex-col md:flex-row gap-4">
+              <button onClick={() => setStep(1)} className="flex-1 border border-white/10 hover:bg-white/5 py-4 rounded-xl font-bold min-h-[48px]">
+                Empezar de nuevo
+              </button>
+              <button className="flex-1 bg-white text-slate-950 hover:bg-white/90 py-4 rounded-xl font-bold min-h-[48px]">
+                Reservar Ahora
+              </button>
             </div>
           </div>
         )}
