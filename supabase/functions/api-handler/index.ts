@@ -1,4 +1,233 @@
 // @ts-nocheck
 // supabase/functions/api-handler/index.ts
-const HOTELBEDS_API_KEY = 'e017e6436199af8134991a3c59ff13d2'
-const HOTELBEDS_SECRET = 'b08aa0bef6'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://holaski-2-fgkxt4ewt-valinor1.vercel.app",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Read all env vars INSIDE the handler — never at module scope
+  const HOTELBEDS_API_KEY = Deno.env.get("HOTELBEDS_API_KEY");
+  const HOTELBEDS_SECRET = Deno.env.get("HOTELBEDS_SECRET");
+  const VALINOR_PROXY_URL = Deno.env.get("VALINOR_PROXY_URL");
+  const VALINOR_PROXY_TOKEN = Deno.env.get("VALINOR_PROXY_TOKEN");
+
+  // Validate credentials before doing anything
+  if (!HOTELBEDS_API_KEY || !HOTELBEDS_SECRET) {
+    return new Response(
+      JSON.stringify({ error: "Hotelbeds credentials not configured. Set HOTELBEDS_API_KEY and HOTELBEDS_SECRET as Supabase secrets." }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!VALINOR_PROXY_URL || !VALINOR_PROXY_TOKEN) {
+    return new Response(
+      JSON.stringify({ error: "Valinor proxy not configured. VALINOR_PROXY_URL and VALINOR_PROXY_TOKEN must be set." }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Invalid JSON body" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const { action } = body;
+  console.log("api-handler invoked, action:", action);
+
+  try {
+    // ── HOTELBEDS: Search Hotels ──────────────────────────────────────────
+    if (action === "search-hotels") {
+      const { destination, checkIn, checkOut, adults, children } = body as {
+        destination: string;
+        checkIn: string;
+        checkOut: string;
+        adults: number;
+        children: number;
+      };
+
+      if (!destination || !checkIn || !checkOut) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: destination, checkIn, checkOut" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // HMAC-SHA256 signature: API_KEY + SECRET + timestamp (seconds)
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const msgBuffer = new TextEncoder().encode(HOTELBEDS_API_KEY + HOTELBEDS_SECRET + timestamp);
+      const keyBuffer = new TextEncoder().encode(HOTELBEDS_SECRET);
+      const cryptoKey = await crypto.subtle.importKey(
+        "raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      );
+      const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, msgBuffer);
+      const signature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      const params = new URLSearchParams({
+        stay: `${checkIn}:${checkOut}`,
+        occupancies: `${adults}:${children ?? 0}`,
+        keywords: destination,
+        fields: "all",
+        language: "ENG",
+        from: "1",
+        to: "10",
+      });
+
+      const hbRes = await fetch(
+        `https://api.test.hotelbeds.com/hotel-content-api/1.0/hotels?${params}`,
+        {
+          headers: {
+            "Api-key": HOTELBEDS_API_KEY,
+            "X-Signature": signature,
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+          },
+          signal: AbortSignal.timeout(15000),
+        }
+      );
+
+      const hbData = await hbRes.json();
+
+      if (!hbRes.ok) {
+        console.error("Hotelbeds error:", hbData);
+        return new Response(
+          JSON.stringify({ error: "Hotelbeds API error", details: hbData, fallback: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ hotels: hbData.hotels ?? [], total: hbData.total ?? 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── OPENAI: Build Package ─────────────────────────────────────────────
+    if (action === "build-package") {
+      const { hotel, checkIn, checkOut, adults, children, destination } = body as {
+        hotel: Record<string, unknown>;
+        checkIn: string;
+        checkOut: string;
+        adults: number;
+        children: number;
+        destination: string;
+      };
+
+      if (!hotel || !checkIn || !checkOut) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: hotel, checkIn, checkOut" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const nights = Math.ceil(
+        (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const totalPax = (adults ?? 1) + (children ?? 0);
+
+      const prompt = `Eres un agente de viajes especializado en esquí. 
+Crea un paquete completo de viaje en español con estos datos:
+
+Destino: ${destination}
+Hotel: ${JSON.stringify(hotel)}
+Check-in: ${checkIn}, Check-out: ${checkOut} (${nights} noches)
+Pasajeros: ${adults} adultos, ${children} niños
+
+El paquete DEBE incluir en formato JSON:
+{
+  "titulo": "nombre del paquete",
+  "resumen": "descripción corta atractiva",
+  "hotel": {
+    "nombre": "...",
+    "categoria": "X estrellas",
+    "precio_noche_mxn": 0,
+    "precio_total_hotel_mxn": 0
+  },
+  "ski_pass": {
+    "descripcion": "...",
+    "precio_por_persona_mxn": 0,
+    "precio_total_mxn": 0,
+    "incluye": ["lista de lo que incluye"]
+  },
+  "traslados": {
+    "descripcion": "...",
+    "precio_total_mxn": 0,
+    "tipo": "privado/compartido"
+  },
+  "total_paquete_mxn": 0,
+  "precio_por_persona_mxn": 0,
+  "itinerario": [
+    { "dia": 1, "titulo": "...", "actividades": ["..."] }
+  ],
+  "incluye": ["lista de lo incluido"],
+  "no_incluye": ["lista de lo no incluido"],
+  "consejos": ["tips útiles para este destino"]
+}
+
+Usa precios realistas en MXN para ${new Date().getFullYear()}. Solo responde con el JSON, sin texto adicional.`;
+
+      const aiRes = await fetch(`${VALINOR_PROXY_URL}`, {
+        method: "POST",
+        headers: {
+          "x-proxy-token": VALINOR_PROXY_TOKEN,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "openai",
+          endpoint: "/v1/chat/completions",
+          payload: {
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 2000,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      const aiData = await aiRes.json();
+      const content = aiData.choices?.[0]?.message?.content ?? "";
+
+      let packageData: Record<string, unknown>;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        packageData = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+      } catch {
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI response", raw: content }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ package: packageData }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: `Unknown action: ${action}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (err) {
+    console.error("api-handler error:", err);
+    return new Response(
+      JSON.stringify({ error: "Internal server error", details: String(err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
