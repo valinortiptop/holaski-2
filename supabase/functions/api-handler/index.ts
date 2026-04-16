@@ -2,6 +2,7 @@
 \s*/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
+    clearTimeout(timeout);
     console.error("generate-package error:", (err as Error).message);
     return {
       resort_name: params.destination,
@@ -16,50 +17,84 @@
   }
 }
 
-// ── Action router ──
-const handlers: Record<string, (params: Record<string, unknown>, proxyUrl: string, proxyToken: string) => Promise<unknown>> = {
-  "search-hotels": async (params) => handleSearchHotels(params),
+// ── Ping for diagnostics ──
+async function handlePing(): Promise<unknown> {
+  return { ok: true, time: new Date().toISOString() };
+}
+
+// ── Handler registry ──
+const handlers: Record<
+  string,
+  (p: Record<string, unknown>, u: string, t: string) => Promise<unknown>
+> = {
+  "search-hotels": handleSearchHotels,
   "generate-package": handleGeneratePackage,
+  "ping": handlePing,
 };
 
 // ── Thin orchestrator ──
-serve(async (req) => {
-  console.log("api-handler request:", req.method, "origin:", req.headers.get("origin"));
-
+// CRITICAL: OPTIONS MUST return 200 before ANY other logic can throw.
+serve(async (req: Request) => {
+  // 1. PREFLIGHT — absolute first priority, no deps, cannot fail
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  // 2. Only POST is accepted for actions
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "method_not_allowed" }),
+      { status: 405, headers: jsonHeaders },
+    );
+  }
+
+  // 3. Parse body safely
+  let body: Record<string, unknown>;
   try {
-    const { action, ...params } = await req.json();
-    console.log("api-handler action:", action);
+    body = await req.json();
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "invalid_json" }),
+      { status: 400, headers: jsonHeaders },
+    );
+  }
 
-    const proxyUrl = Deno.env.get("VALINOR_PROXY_URL") ?? "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
-    const proxyToken = Deno.env.get("VALINOR_PROXY_TOKEN");
-    if (!proxyToken) {
-      return new Response(JSON.stringify({ error: "Proxy not configured" }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const action = String(body.action ?? "");
+  const params = { ...body };
+  delete (params as Record<string, unknown>).action;
 
-    const handler = handlers[action];
-    if (!handler) {
-      return new Response(JSON.stringify({ error: "Unknown action: " + action }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  console.log("api-handler:", action);
 
-    const data = await handler(params, proxyUrl, proxyToken);
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // 4. Env validation (AFTER preflight, so CORS works even if misconfigured)
+  const proxyUrl =
+    Deno.env.get("VALINOR_PROXY_URL") ??
+    "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
+  const proxyToken = Deno.env.get("VALINOR_PROXY_TOKEN");
+
+  if (!proxyToken && action !== "ping") {
+    return new Response(
+      JSON.stringify({ error: "proxy_not_configured" }),
+      { status: 503, headers: jsonHeaders },
+    );
+  }
+
+  // 5. Route to handler
+  const handler = handlers[action];
+  if (!handler) {
+    return new Response(
+      JSON.stringify({ error: "unknown_action", action }),
+      { status: 400, headers: jsonHeaders },
+    );
+  }
+
+  try {
+    const data = await handler(params, proxyUrl, proxyToken ?? "");
+    return new Response(JSON.stringify(data), { headers: jsonHeaders });
   } catch (err) {
-    console.error("api-handler fatal:", (err as Error).message);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("handler fatal:", action, (err as Error).message);
+    return new Response(
+      JSON.stringify({ error: "handler_failed", message: (err as Error).message }),
+      { status: 500, headers: jsonHeaders },
+    );
   }
 });
