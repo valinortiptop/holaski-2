@@ -1,10 +1,9 @@
 // @ts-nocheck
 // supabase/functions/api-handler/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://holaski-2-fgkxt4ewt-valinor1.vercel.app",
+  "Access-Control-Allow-Origin": "https://holaski-2.valinor.studio",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -12,13 +11,11 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Read all env vars INSIDE the handler — never at module scope
   const HOTELBEDS_API_KEY = Deno.env.get("HOTELBEDS_API_KEY");
   const HOTELBEDS_SECRET = Deno.env.get("HOTELBEDS_SECRET");
   const VALINOR_PROXY_URL = Deno.env.get("VALINOR_PROXY_URL");
   const VALINOR_PROXY_TOKEN = Deno.env.get("VALINOR_PROXY_TOKEN");
 
-  // Validate credentials before doing anything
   if (!HOTELBEDS_API_KEY || !HOTELBEDS_SECRET) {
     return new Response(
       JSON.stringify({ error: "Hotelbeds credentials not configured. Set HOTELBEDS_API_KEY and HOTELBEDS_SECRET as Supabase secrets." }),
@@ -64,7 +61,6 @@ serve(async (req) => {
         );
       }
 
-      // HMAC-SHA256 signature: API_KEY + SECRET + timestamp (seconds)
       const timestamp = Math.floor(Date.now() / 1000).toString();
       const msgBuffer = new TextEncoder().encode(HOTELBEDS_API_KEY + HOTELBEDS_SECRET + timestamp);
       const keyBuffer = new TextEncoder().encode(HOTELBEDS_SECRET);
@@ -136,7 +132,6 @@ serve(async (req) => {
       const nights = Math.ceil(
         (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
       );
-      const totalPax = (adults ?? 1) + (children ?? 0);
 
       const prompt = `Eres un agente de viajes especializado en esquí. 
 Crea un paquete completo de viaje en español con estos datos:
