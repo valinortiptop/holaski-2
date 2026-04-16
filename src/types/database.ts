@@ -1,29 +1,29 @@
 // @ts-nocheck
-export interface SkiResort {
+export interface Resort {
   id: string;
   name: string;
-  country: string;
-  description: string;
-  image_url: string;
-  price_level: number;
-  rating: number;
-  difficulty_distribution?: {
-    beginner: number;
-    intermediate: number;
-    advanced: number;
-  };
-  amenities?: string[];
-  created_at: string;
+  location?: string;
+  description?: string;
+  image_url?: string;
+  base_price_per_day?: number;
 }
 
-export type Database = {
-  public: {
-    Tables: {
-      ski_resorts: {
-        Row: SkiResort;
-        Insert: Omit<SkiResort, 'id' | 'created_at'>;
-        Update: Partial<Omit<SkiResort, 'id' | 'created_at'>>;
-      };
-    };
+export interface GeneratedPlan {
+  resort_name: string;
+  hotel: {
+    name: string;
+    description: string;
+    stars: number;
   };
-};
+  itinerary: {
+    day: number;
+    activity: string;
+    suggestion: string;
+  }[];
+  cost_breakdown: {
+    hotel: number;
+    ski_pass: number;
+    equipment: number;
+    total_per_person_usd: number;
+  };
+}
