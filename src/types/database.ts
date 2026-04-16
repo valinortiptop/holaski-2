@@ -1,33 +1,29 @@
 // @ts-nocheck
-export interface Resort {
+export interface SkiResort {
   id: string;
-  slug: string;
   name: string;
-  region: string;
   country: string;
-  altitude_top: number;
-  altitude_base: number;
-  runs_total: number;
-  lifts_total: number;
-  difficulty_json: {
+  description: string;
+  image_url: string;
+  price_level: number;
+  rating: number;
+  difficulty_distribution?: {
     beginner: number;
     intermediate: number;
     advanced: number;
   };
-  price_level: number;
-  image_url: string;
-  description: string;
+  amenities?: string[];
   created_at: string;
 }
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      resorts: {
-        Row: Resort;
-        Insert: Omit<Resort, 'id' | 'created_at'>;
-        Update: Partial<Omit<Resort, 'id' | 'created_at'>>;
+      ski_resorts: {
+        Row: SkiResort;
+        Insert: Omit<SkiResort, 'id' | 'created_at'>;
+        Update: Partial<Omit<SkiResort, 'id' | 'created_at'>>;
       };
     };
   };
-}
+};
