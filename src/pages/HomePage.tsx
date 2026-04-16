@@ -1,6 +1,9 @@
 // @ts-nocheck
+// src/pages/HomePage.tsx
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Sparkles, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
+
+const HERO_FALLBACK = 'https://images.unsplash.com/photo-1548777123-8955d3a0d4e8?auto=format&fit=crop&q=80&w=1200';
 
 export default function HomePage() {
   const featuredResorts = [
@@ -8,7 +11,7 @@ export default function HomePage() {
       id: 1,
       name: 'Cerro Catedral',
       location: 'Bariloche, Argentina',
-      image: 'https://images.unsplash.com/photo-1520113526514-445a2790ac11?auto=format&fit=crop&q=80&w=1200',
+      image: 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/cerro-catedral-home.webp',
       price: 'MXN 2,450',
       status: 'Abierto',
       snowDepth: '120cm'
@@ -17,7 +20,7 @@ export default function HomePage() {
       id: 2,
       name: 'Las Leñas',
       location: 'Mendoza, Argentina',
-      image: 'https://images.unsplash.com/photo-1476522383244-b21d41f57ad0?auto=format&fit=crop&q=80&w=1200',
+      image: 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/las-lenas-home.webp',
       price: 'MXN 3,200',
       status: 'Nieve en polvo',
       snowDepth: '185cm'
@@ -26,7 +29,7 @@ export default function HomePage() {
       id: 3,
       name: 'Valle Nevado',
       location: 'Santiago, Chile',
-      image: 'https://images.unsplash.com/photo-1614713568397-b32b97e46228?auto=format&fit=crop&q=80&w=1200',
+      image: 'https://kmehmrtrktgqdiafitkv.supabase.co/storage/v1/object/public/public-assets/resort-images/valle-nevado-home.webp',
       price: 'MXN 4,500',
       status: 'Gran Nivel',
       snowDepth: '150cm'
@@ -38,41 +41,42 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative h-[90vh] min-h-[600px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1551524559-8af4e6624178?auto=format&fit=crop&q=80&w=2000" 
+          <img
+            src="https://images.unsplash.com/photo-1548777123-8955d3a0d4e8?auto=format&fit=crop&q=80&w=2000"
             className="w-full h-full object-cover"
             alt="Snow mountain panorama"
+            onError={(e) => { (e.target as HTMLImageElement).src = HERO_FALLBACK; }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/40 to-slate-950" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/20 backdrop-blur-md border border-blue-500/30 px-4 py-2 rounded-full mb-8 animate-in fade-in slide-in-from-bottom-4">
+          <div className="inline-flex items-center gap-2 bg-blue-500/20 backdrop-blur-md border border-blue-500/30 px-4 py-2 rounded-full mb-8">
             <Sparkles className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-semibold text-blue-100">Planificador IA Temporada 2024</span>
           </div>
-          
+
           <h1 className="text-5xl md:text-8xl font-black mb-6 tracking-tighter leading-tight">
             TU PRÓXIMA <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">AVENTURA</span> EN NIEVE
           </h1>
-          
+
           <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-12">
             Descubre los mejores resorts, pronósticos en tiempo real y planifica tu viaje perfecto con nuestra inteligencia artificial.
           </p>
 
           <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-xl p-2 rounded-2xl md:rounded-full border border-white/10 flex flex-col md:flex-row items-center gap-2">
             <div className="w-full flex-1 flex items-center px-4 py-3">
-              <MapPin className="text-blue-400 w-5 h-5 mr-3" />
-              <input 
-                type="text" 
+              <MapPin className="text-blue-400 w-5 h-5 mr-3 flex-shrink-0" />
+              <input
+                type="text"
                 placeholder="¿A dónde quieres ir?"
                 className="bg-transparent border-none text-white placeholder-white/50 focus:ring-0 w-full font-medium"
               />
             </div>
             <div className="hidden md:block w-px h-8 bg-white/20" />
             <div className="w-full md:w-auto flex-1 flex items-center px-4 py-3">
-              <Calendar className="text-blue-400 w-5 h-5 mr-3" />
+              <Calendar className="text-blue-400 w-5 h-5 mr-3 flex-shrink-0" />
               <span className="text-white/50 text-sm md:text-base font-medium">Cualquier fecha</span>
             </div>
             <button className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl md:rounded-full font-bold flex items-center justify-center gap-2 transition-all group">
@@ -101,16 +105,18 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuredResorts.map((resort) => (
-            <Link 
-              key={resort.id} 
-              to={`/resorts/${resort.name.toLowerCase().replace(' ', '-')}`}
+            <Link
+              key={resort.id}
+              to={`/resorts/${resort.name.toLowerCase().replace(/ /g, '-')}`}
               className="group bg-slate-900 rounded-3xl overflow-hidden border border-white/5 hover:border-blue-500/30 transition-all hover:-translate-y-2"
             >
-              <div className="relative h-64">
-                <img 
-                  src={resort.image} 
+              <div className="relative h-64 bg-slate-800">
+                <img
+                  src={resort.image}
                   alt={resort.name}
+                  loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  onError={(e) => { (e.target as HTMLImageElement).src = HERO_FALLBACK; }}
                 />
                 <div className="absolute top-4 right-4 bg-slate-950/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                   <span className="text-xs font-bold text-blue-400">{resort.status}</span>
@@ -122,12 +128,14 @@ export default function HomePage() {
               <div className="p-6">
                 <h3 className="text-2xl font-bold mb-1">{resort.name}</h3>
                 <div className="flex items-center text-white/50 text-sm mb-4">
-                  <MapPin className="w-3.5 h-3.5 mr-1" />
+                  <MapPin className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
                   {resort.location}
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-white/5">
                   <span className="text-white/60 text-sm">Desde</span>
-                  <span className="text-xl font-black text-blue-400">{resort.price} <span className="text-xs font-normal text-white/40">/día</span></span>
+                  <span className="text-xl font-black text-blue-400">
+                    {resort.price} <span className="text-xs font-normal text-white/40">/día</span>
+                  </span>
                 </div>
               </div>
             </Link>
@@ -143,7 +151,7 @@ export default function HomePage() {
               <circle cx="200" cy="200" r="150" fill="white" />
             </svg>
           </div>
-          
+
           <div className="relative z-10 grid md:grid-cols-2 gap-12 p-8 md:p-16 items-center">
             <div>
               <div className="bg-white/20 backdrop-blur-sm border border-white/30 inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6">
@@ -156,7 +164,7 @@ export default function HomePage() {
               <p className="text-blue-50 text-lg mb-10 opacity-90">
                 Solo dinos tu nivel, presupuesto y con quién viajas. Generaremos un itinerario personalizado, seleccionaremos el mejor resort y buscaremos las mejores tarifas automáticamente.
               </p>
-              <Link 
+              <Link
                 to="/planner"
                 className="inline-flex items-center justify-center bg-white text-blue-600 px-8 py-4 rounded-2xl font-black text-lg hover:bg-blue-50 transition-colors shadow-xl"
               >
