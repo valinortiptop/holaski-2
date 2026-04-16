@@ -1,46 +1,89 @@
 # Project Plan
 
-_Model: claude-opus-4-7 | Approved: 2026-04-16T22:52:19.921Z_
+_Model: claude-opus-4-7 | Approved: 2026-04-16T23:08:07.959Z_
 
-## You're right — let me verify what's actually deployed
+## Hotelbeds API Configuration Plan
 
-Looking at the screenshot, I can see two distinct problems:
+I'll walk through exactly how to wire Hotelbeds into HolaSki properly. No code yet — let's align on the approach first.
 
-1. **CORS error persists** on `/buscar` page calling the edge function — the preflight is still failing
-2. **Search results page** (`SearchResultsPage` or similar at `/buscar`) is still showing **USD $320, USD $180, USD $150** — I only updated `TripPlannerPage.tsx`, not the search results page
+### The Core Decision: Which Path to Take
 
-Let me verify what's actually on the deployed edge function and check the search page file.
+Looking at your project memory, there's been friction around CORS and Edge Function deployment. I see two possible architectures, and **only one is correct** per your platform rules:
 
-:::verify:verify-query
-{
-  "id": "check-edge-function-deployed",
-  "query": "SELECT 1 as check_db_connected"
-}
-:::
+| Option | Approach | Verdict |
+|---|---|---|
+| **A** | Store `HOTELBEDS_API_KEY` + `HOTELBEDS_SECRET` directly in this project's Supabase secrets, sign requests inside `api-handler` | ❌ Violates platform rules |
+| **B** | Register Hotelbeds in Valinor's `integrations_registry` once, then call via the shared `api-proxy` from `api-handler` | ✅ Correct path |
 
-## What went wrong
+Per rule #21 (*Use api-proxy for all third-party APIs*): child projects must NOT wrap Hotelbeds themselves, must NOT store the API key/secret locally, and must NOT ask end-users for secrets. The signature generation (HMAC-SHA256 of `apiKey + secret + timestamp`) belongs in the Valinor proxy, not here.
 
-**My last response had two gaps:**
+### What Hotelbeds Actually Requires
 
-1. **Wrong file targeted for MXN conversion.** The screenshot shows `/buscar` (search results) displaying "USD $320", "USD $180", "USD $150". I updated `TripPlannerPage.tsx` (the `/planificador` page), but the hardcoded USD fallback prices live in a **different** file — likely `SearchResultsPage.tsx` or `BuscarPage.tsx` which renders hotel cards with fallback data when the edge function fails. I never touched that file.
+From the web context and Hotelbeds docs, every request needs:
 
-2. **CORS fix may not have taken effect.** Even though I changed the edge function code to use wildcard `*`, the error you're seeing is identical to before: *"Response to preflight request doesn't pass access control check: It does not have HTTP ok status."* This means one of:
-   - The edge function crashed on cold start (env var check failing **before** OPTIONS returns)
-   - The deploy didn't actually update
-   - There's a different edge function being called (check the URL — it's hitting `kmehmrtrktgqdiafitkv.supabase.co/functions/v1/...` — which function exactly?)
+- **`Api-key`** header — the public API key
+- **`X-Signature`** header — `SHA256(apiKey + secret + unixTimestamp)` (it's SHA-256, not HMAC, despite common confusion)
+- **`Accept: application/json`** and **`Accept-Encoding: gzip`**
+- **Base URL**: `https://api.test.hotelbeds.com` (sandbox) or `https://api.hotelbeds.com` (production)
 
-## What I need to investigate before writing more code
+This is exactly the `signature` auth type the Valinor `api-proxy` supports (per rule #21: *"auto-resolves auth (api key, bearer, signature, query-param) from the integrations_registry"*).
 
-I need to read these files from the project context to give you a real fix instead of another blind patch:
+### Recommended Path: Register Hotelbeds in Valinor
 
-- `src/pages/SearchResultsPage.tsx` (or whatever renders `/buscar`) — to find the hardcoded USD prices
-- The component calling `supabase.functions.invoke(...)` on that page — to see which action name and which function it's hitting
-- Confirm the current deployed `api-handler/index.ts` actually has OPTIONS returning before env checks
+**Step 1 — You (admin) register Hotelbeds once in Valinor's integration registry:**
 
-## Honest answer to your question
+- Open `/admin/integrations` in the Valinor admin panel
+- Click **Add Integration**
+- Provider name: `hotelbeds`
+- Auth type: `signature` (SHA-256 of `apiKey + secret + timestamp`)
+- API key: `e017e6436199af8134991a3c59ff13d2`
+- Secret: `b08aa0bef6` *(this looks truncated — Hotelbeds secrets are usually 10+ chars, please verify)*
+- Base URL: `https://api.test.hotelbeds.com` (start with sandbox)
+- Required headers: `Api-key`, `X-Signature`, `Accept: application/json`
 
-**No, I did not fully fix them.** I fixed the Trip Planner page prices and patched CORS logic in the edge function, but:
-- The `/buscar` page uses different code I didn't modify
-- The preflight is still failing, which suggests either my CORS fix didn't deploy correctly or the function is crashing before reaching the OPTIONS handler
+After that's done, **every** child project (including HolaSki) can call Hotelbeds through `api-proxy` with zero local config.
 
-**Can you confirm:** which file renders the `/buscar` route? It should be in `src/App.tsx` as a `<Route path="/buscar" element={...} />`. Once I know the exact filename, I'll fix both the USD→MXN conversion on that page **and** add proper diagnostic logging to figure out why the edge function preflight is failing (likely an unhandled throw before the OPTIONS early-return).
+**Step 2 — I refactor `api-handler` in HolaSki to use the shared proxy pattern:**
+
+```
+Frontend → api-handler (HolaSki) → api-proxy (Valinor) → Hotelbeds
+```
+
+The `api-handler` becomes a thin orchestrator that just forwards `{ provider: 'hotelbeds', path: '...', method: 'POST', payload: {...} }`. No keys, no signing, no secrets in HolaSki.
+
+### Questions Before I Build
+
+1. **Is the secret `b08aa0bef6` complete?** Hotelbeds secrets are typically longer. Please double-check in your Hotelbeds developer dashboard — a wrong secret = `InvalidSignature` errors on every call.
+
+2. **Sandbox or production?** I strongly recommend starting with `api.test.hotelbeds.com` until we confirm the search/availability flow works end-to-end.
+
+3. **Has Hotelbeds been registered in Valinor yet?** If yes, I can skip straight to refactoring `api-handler`. If no, you'll need to register it first (I can't do that from inside HolaSki).
+
+4. **Which Hotelbeds endpoints do we actually need right now?** My guess based on the app:
+   - `POST /hotel-api/1.0/hotels` — availability search (date range, destination, occupancy)
+   - `GET /hotel-content-api/1.0/hotels/{code}/details` — hotel details page
+   - `POST /hotel-api/1.0/checkrates` — confirm price before booking
+   - *(Bookings come later — let's not wire that until search works.)*
+
+### What I'll Build Once You Confirm
+
+- **Refactor `api-handler`** — `search-hotels` and new `hotel-details`, `check-rates` actions, all routed through `api-proxy` with `provider: 'hotelbeds'`
+- **Add a ski-destination filter** — Hotelbeds has `destinationCode` for ski areas (e.g., `BRC` Bariloche, `LEN` Las Leñas, `VNV` Valle Nevado); I'll hardcode the mapping
+- **Update `SearchResultsPage`** — wire real Hotelbeds response shape (hotels, rates in MXN via `currency: 'MXN'` param), pagination, empty states, loading skeletons
+- **Add resilient fallback** — if Hotelbeds is down or returns empty, show the existing hardcoded resort cards with a soft "Mostrando destinos destacados" banner (per the graceful-degradation rule)
+
+### Verification I'll Run After Build
+
+```
+:::verify:verify-query — confirm leads table captures hotelbeds rate_key on inquiry submit
+:::verify: — ping api-handler with { action: "search-hotels", destinationCode: "BRC", ... } and confirm 200 + hotel array
+```
+
+### Please Confirm
+
+1. ✅ / ❌ Secret `b08aa0bef6` is complete (or paste the full one)
+2. ✅ Sandbox first, ❌ production first
+3. Is Hotelbeds already registered in Valinor's `/admin/integrations`?
+4. Endpoints I listed look right, or anything to add/remove?
+
+Once you answer, say **"build it"** and I'll ship the full refactor in one shot.
