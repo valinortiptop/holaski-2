@@ -1,14 +1,17 @@
-\s*/g, "").trim();
+/g, "").trim();
     return JSON.parse(clean);
   } catch (e) {
     console.error("generatePackage failed:", (e as Error).message);
-    // Return a valid fallback so the UI never shows a hard error
     return {
       resort_name: String(p.destination ?? "Destino"),
-      hotel: { name: "Hotel Sugerido", description: "Hotel ski-in/ski-out de primera clase.", stars: 4 },
+      hotel: {
+        name: "Hotel Sugerido",
+        description: "Hotel ski-in/ski-out de primera clase.",
+        stars: 4,
+      },
       itinerary: [
         { day: 1, activity: "Llegada y aclimatación", suggestion: "Descansa y equípate" },
-        { day: 2, activity: "Clases de esquí + pistas verdes", suggestion: "Empieza con calma" },
+        { day: 2, activity: "Clases + pistas verdes", suggestion: "Empieza con calma" },
         { day: 3, activity: "Pistas azules y rojas", suggestion: "Sube el nivel" },
         { day: 4, activity: "Día libre en resort", suggestion: "Spa o free skiing" },
       ],
@@ -16,7 +19,7 @@
         hotel: 12000,
         ski_pass: 5600,
         equipment: 2600,
-        total_per_person_mxn: 20200,
+        total_per_person_usd: 20200,
       },
     };
   }
@@ -27,7 +30,7 @@ async function sendContact(
   proxyUrl: string,
   token: string,
 ) {
-  const data = await proxyPost(proxyUrl, token, {
+  const data = await callProxy(proxyUrl, token, {
     provider: "resend",
     endpoint: "/emails",
     payload: {

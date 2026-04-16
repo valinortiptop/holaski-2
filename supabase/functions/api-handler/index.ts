@@ -8,26 +8,17 @@ const CORS = {
   "Access-Control-Allow-Headers": "*",
   "Access-Control-Max-Age": "86400",
 };
-
 const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
 
-function ok(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
-}
-
-function err(msg: string, status = 400) {
-  return new Response(JSON.stringify({ error: msg }), { status, headers: JSON_HEADERS });
-}
+const ok = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+const err = (msg: string, status = 400, extra: Record<string, unknown> = {}) =>
+  new Response(JSON.stringify({ error: msg, ...extra }), { status, headers: JSON_HEADERS });
 
 serve(async (req) => {
-  // ── 1. PREFLIGHT — must be first, zero deps, cannot throw ──
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { status: 200, headers: CORS });
-  }
-
+  if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: CORS });
   if (req.method !== "POST") return err("method_not_allowed", 405);
 
-  // ── 2. Parse body ──
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
@@ -38,13 +29,11 @@ serve(async (req) => {
   const action = String(body.action ?? "");
   console.log("api-handler invoked, action:", action);
 
-  // ── 3. Ping — no proxy needed ──
-  if (action === "ping") {
-    return ok({ ok: true, ts: new Date().toISOString() });
-  }
+  if (action === "ping") return ok({ ok: true, ts: new Date().toISOString() });
 
-  // ── 4. Env validation ──
-  const proxyUrl = Deno.env.get("VALINOR_PROXY_URL") ?? "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
+  const proxyUrl =
+    Deno.env.get("VALINOR_PROXY_URL") ??
+    "https://htfhprzchvgcbquohgir.supabase.co/functions/v1/api-proxy";
   const proxyToken = Deno.env.get("VALINOR_PROXY_TOKEN");
 
   if (!proxyToken) {
@@ -52,66 +41,174 @@ serve(async (req) => {
     return err("proxy_not_configured", 503);
   }
 
-  // ── 5. Route actions ──
+  const handlers: Record<string, (p: Record<string, unknown>) => Promise<unknown>> = {
+    "search-hotels": (p) => searchHotels(p, proxyUrl, proxyToken),
+    "hotel-details": (p) => hotelDetails(p, proxyUrl, proxyToken),
+    "check-rates": (p) => checkRates(p, proxyUrl, proxyToken),
+    "generate-package": (p) => generatePackage(p, proxyUrl, proxyToken),
+    "send-contact": (p) => sendContact(p, proxyUrl, proxyToken),
+  };
+
+  const handler = handlers[action];
+  if (!handler) return err(`unknown_action: ${action}`, 400);
+
   try {
-    if (action === "search-hotels") {
-      return ok(await searchHotels(body, proxyUrl, proxyToken));
-    }
-    if (action === "generate-package") {
-      return ok(await generatePackage(body, proxyUrl, proxyToken));
-    }
-    if (action === "send-contact") {
-      return ok(await sendContact(body, proxyUrl, proxyToken));
-    }
-    return err(`unknown_action: ${action}`, 400);
+    const result = await handler(body);
+    return ok(result);
   } catch (e) {
-    console.error("action error:", action, (e as Error).message);
-    return err((e as Error).message, 500);
+    const msg = (e as Error).message;
+    console.error(`action error [${action}]:`, msg);
+    return err(msg, 500);
   }
 });
 
-// ── Helpers ──
+// ────────────────────────────────────────────────────────────────
+// Shared proxy caller
+// ────────────────────────────────────────────────────────────────
 
-async function proxyPost(url: string, token: string, payload: unknown, timeoutMs = 20000) {
+async function callProxy(
+  proxyUrl: string,
+  token: string,
+  payload: Record<string, unknown>,
+  timeoutMs = 25000,
+): Promise<any> {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(proxyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-proxy-token": token },
       body: JSON.stringify(payload),
       signal: ac.signal,
     });
     clearTimeout(t);
+    const text = await res.text();
     if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`proxy ${res.status}: ${txt.slice(0, 200)}`);
+      // Surface proxy-side "provider not registered" clearly
+      if (res.status === 404 && /integration/i.test(text)) {
+        throw new Error(
+          "hotelbeds_not_registered: Open /admin/integrations in Valinor and register 'hotelbeds' with auth=signature.",
+        );
+      }
+      throw new Error(`proxy_${res.status}: ${text.slice(0, 300)}`);
     }
-    return await res.json();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text };
+    }
   } catch (e) {
     clearTimeout(t);
+    if ((e as Error).name === "AbortError") throw new Error("proxy_timeout");
     throw e;
   }
 }
+
+// ────────────────────────────────────────────────────────────────
+// Hotelbeds handlers (via Valinor shared proxy)
+// ────────────────────────────────────────────────────────────────
 
 async function searchHotels(
   p: Record<string, unknown>,
   proxyUrl: string,
   token: string,
 ) {
-  try {
-    const data = await proxyPost(proxyUrl, token, {
-      provider: "hotelbeds",
-      path: "/hotel-api/1.0/hotels",
-      method: "POST",
-      payload: p,
-    });
-    return data;
-  } catch (e) {
-    console.error("searchHotels failed:", (e as Error).message);
-    return { hotels: [], error: (e as Error).message };
-  }
+  const {
+    destinationCode,
+    checkIn,
+    checkOut,
+    adults = 2,
+    children = 0,
+    rooms = 1,
+    currency = "MXN",
+    language = "CAS",
+  } = p as {
+    destinationCode?: string;
+    checkIn?: string;
+    checkOut?: string;
+    adults?: number;
+    children?: number;
+    rooms?: number;
+    currency?: string;
+    language?: string;
+  };
+
+  if (!destinationCode) throw new Error("destinationCode_required");
+  if (!checkIn || !checkOut) throw new Error("dates_required");
+
+  const payload = {
+    stay: { checkIn, checkOut },
+    occupancies: [{ rooms, adults, children: Number(children) || 0 }],
+    destination: { code: destinationCode },
+    currency,
+    language,
+  };
+
+  const data = await callProxy(proxyUrl, token, {
+    provider: "hotelbeds",
+    path: "/hotel-api/1.0/hotels",
+    method: "POST",
+    payload,
+  });
+
+  const hotels = data?.hotels?.hotels ?? [];
+  return {
+    hotels: hotels.map((h: any) => ({
+      code: h.code,
+      name: h.name,
+      categoryName: h.categoryName,
+      destinationName: h.destinationName,
+      zoneName: h.zoneName,
+      latitude: h.latitude,
+      longitude: h.longitude,
+      currency: h.currency,
+      minRate: Number(h.minRate ?? 0),
+      maxRate: Number(h.maxRate ?? 0),
+      rooms: h.rooms ?? [],
+    })),
+    total: data?.hotels?.total ?? hotels.length,
+    checkIn: data?.hotels?.checkIn ?? checkIn,
+    checkOut: data?.hotels?.checkOut ?? checkOut,
+  };
 }
+
+async function hotelDetails(
+  p: Record<string, unknown>,
+  proxyUrl: string,
+  token: string,
+) {
+  const { code, language = "CAS" } = p as { code?: string; language?: string };
+  if (!code) throw new Error("code_required");
+
+  const data = await callProxy(proxyUrl, token, {
+    provider: "hotelbeds",
+    path: `/hotel-content-api/1.0/hotels/${code}/details`,
+    method: "GET",
+    query: { language, useSecondaryLanguage: "false" },
+  });
+  return data?.hotel ?? data;
+}
+
+async function checkRates(
+  p: Record<string, unknown>,
+  proxyUrl: string,
+  token: string,
+) {
+  const { rateKey } = p as { rateKey?: string };
+  if (!rateKey) throw new Error("rateKey_required");
+
+  const data = await callProxy(proxyUrl, token, {
+    provider: "hotelbeds",
+    path: "/hotel-api/1.0/checkrates",
+    method: "POST",
+    payload: { rooms: [{ rateKey }] },
+  });
+  return data;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Existing: AI package generator + contact (unchanged logic)
+// ────────────────────────────────────────────────────────────────
 
 async function generatePackage(
   p: Record<string, unknown>,
@@ -122,17 +219,21 @@ async function generatePackage(
 Destino: ${p.destination}, Fechas: ${p.dates}, Viajeros: ${p.travelers}, Nivel: ${p.level}, Presupuesto: ${p.budget}
 
 Devuelve EXACTAMENTE este JSON (precios en MXN):
-{"resort_name":"...","hotel":{"name":"...","description":"...","stars":4},"itinerary":[{"day":1,"activity":"...","suggestion":"..."}],"cost_breakdown":{"hotel":0,"ski_pass":0,"equipment":0,"total_per_person_mxn":0}}`;
+{"resort_name":"...","hotel":{"name":"...","description":"...","stars":4},"itinerary":[{"day":1,"activity":"...","suggestion":"..."}],"cost_breakdown":{"hotel":0,"ski_pass":0,"equipment":0,"total_per_person_usd":0}}`;
 
   try {
-    const data = await proxyPost(proxyUrl, token, {
-      provider: "gemini",
-      endpoint: "/v1beta/openai/chat/completions",
-      payload: {
-        model: "gemini-2.0-flash",
-        messages: [{ role: "user", content: prompt }],
+    const data = await callProxy(
+      proxyUrl,
+      token,
+      {
+        provider: "gemini",
+        endpoint: "/v1beta/openai/chat/completions",
+        payload: {
+          model: "gemini-2.0-flash",
+          messages: [{ role: "user", content: prompt }],
+        },
       },
-    }, 30000);
-
-    const raw = data?.choices?.[0]?.message?.content ?? "{}";
+      30000,
+    );
+    const raw: string = data?.choices?.[0]?.message?.content ?? "{}";
     const clean = raw.replace(/
