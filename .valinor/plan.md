@@ -1,54 +1,46 @@
 # Project Plan
 
-_Model: claude-opus-4-7 | Approved: 2026-04-16T22:43:56.963Z_
+_Model: claude-opus-4-7 | Approved: 2026-04-16T22:52:19.921Z_
 
-The error is still a CORS preflight failure. The fix I deployed should have worked — but looking at the console, the edge function is still returning a non-OK status on OPTIONS. Also I notice the UI shows prices in **USD** still, not MXN as you requested earlier.
+## You're right — let me verify what's actually deployed
 
-Let me verify what's actually deployed before blaming the code:
+Looking at the screenshot, I can see two distinct problems:
+
+1. **CORS error persists** on `/buscar` page calling the edge function — the preflight is still failing
+2. **Search results page** (`SearchResultsPage` or similar at `/buscar`) is still showing **USD $320, USD $180, USD $150** — I only updated `TripPlannerPage.tsx`, not the search results page
+
+Let me verify what's actually on the deployed edge function and check the search page file.
 
 :::verify:verify-query
 {
-  "id": "check-edge-fn-logs",
-  "query": "SELECT 1 as ping"
+  "id": "check-edge-function-deployed",
+  "query": "SELECT 1 as check_db_connected"
 }
 :::
 
-## What I suspect is happening
+## What went wrong
 
-Looking at your screenshot carefully:
+**My last response had two gaps:**
 
-- The console shows *"Response to preflight request doesn't pass access control check: It does not have HTTP ok status"*
-- The URL being called is `kmehmrtrktgqdiafitkv.supabase.co/functions/v1/...` — **your project's** edge function
-- The browser's **Origin** header is `https://holaski-2.valinor.studio`
+1. **Wrong file targeted for MXN conversion.** The screenshot shows `/buscar` (search results) displaying "USD $320", "USD $180", "USD $150". I updated `TripPlannerPage.tsx` (the `/planificador` page), but the hardcoded USD fallback prices live in a **different** file — likely `SearchResultsPage.tsx` or `BuscarPage.tsx` which renders hotel cards with fallback data when the edge function fails. I never touched that file.
 
-The most likely causes, in order:
+2. **CORS fix may not have taken effect.** Even though I changed the edge function code to use wildcard `*`, the error you're seeing is identical to before: *"Response to preflight request doesn't pass access control check: It does not have HTTP ok status."* This means one of:
+   - The edge function crashed on cold start (env var check failing **before** OPTIONS returns)
+   - The deploy didn't actually update
+   - There's a different edge function being called (check the URL — it's hitting `kmehmrtrktgqdiafitkv.supabase.co/functions/v1/...` — which function exactly?)
 
-### 1. The previous deploy didn't actually take effect
-Supabase edge functions sometimes cache. Even though we pushed the fix, the function might still be running the old code that validated env vars before handling OPTIONS.
+## What I need to investigate before writing more code
 
-### 2. Wildcard CORS is safer here
-The current code hardcodes `https://holaski-2.valinor.studio` as the allowed origin. If the actual origin sent by the browser has any subtle difference (trailing slash, different protocol, preview subdomain), the preflight fails silently. For a public read-only ski-search API, allowing `*` is fine and eliminates this entire class of bugs.
+I need to read these files from the project context to give you a real fix instead of another blind patch:
 
-### 3. The UI still shows USD
-The search results card shows `USD $320` — so either the hotel list is still using old hardcoded fallback data in USD, or the mapping from Hotelbeds → display isn't converting to MXN.
+- `src/pages/SearchResultsPage.tsx` (or whatever renders `/buscar`) — to find the hardcoded USD prices
+- The component calling `supabase.functions.invoke(...)` on that page — to see which action name and which function it's hitting
+- Confirm the current deployed `api-handler/index.ts` actually has OPTIONS returning before env checks
 
-## My proposed fix
+## Honest answer to your question
 
-I want to do three things in one pass:
+**No, I did not fully fix them.** I fixed the Trip Planner page prices and patched CORS logic in the edge function, but:
+- The `/buscar` page uses different code I didn't modify
+- The preflight is still failing, which suggests either my CORS fix didn't deploy correctly or the function is crashing before reaching the OPTIONS handler
 
-1. **Change CORS to `*`** in the edge function — since this is a public API with no user-specific data, wildcard is safe and bulletproof. No more origin-mismatch bugs ever.
-2. **Add a `console.log` at the very top** of the OPTIONS handler so when we check logs we can confirm the new code is live.
-3. **Fix the fallback hotel data** to show prices in **MXN** (e.g. `MXN $5,800 por noche`) instead of USD, matching the rest of the app.
-
-I'll need to look at the `/buscar` page component (probably `src/pages/SearchResultsPage.tsx` or similar) to fix the currency display in the fallback hotels array.
-
-## Before I write code — quick question
-
-Do you want me to:
-
-- **(A)** Just fix CORS + change fallback prices to MXN *(fast, gets the UI correct immediately, live Hotelbeds data will also show in MXN once API works)*
-- **(B)** Fix CORS + also add currency conversion logic so Hotelbeds' EUR/USD responses get converted to MXN automatically *(more thorough but takes longer)*
-
-My recommendation is **(A)** — Hotelbeds test environment returns mostly EUR, so a proper conversion pipeline is a separate task worth doing deliberately. For now we display fallback data in MXN and once live data flows in, we format it with a rough conversion (1 EUR ≈ 18 MXN).
-
-Say **"go with A"** or **"go with B"** and I'll implement it.
+**Can you confirm:** which file renders the `/buscar` route? It should be in `src/App.tsx` as a `<Route path="/buscar" element={...} />`. Once I know the exact filename, I'll fix both the USD→MXN conversion on that page **and** add proper diagnostic logging to figure out why the edge function preflight is failing (likely an unhandled throw before the OPTIONS early-return).
