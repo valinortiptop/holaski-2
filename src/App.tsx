@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import ResortsPage from './pages/ResortsPage';
 import ResortDetailPage from './pages/ResortDetailPage';
 import TripPlannerPage from './pages/TripPlannerPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/resorts/:slug" element={<ResortDetailPage />} />
           <Route path="/resort/:slug" element={<ResortDetailPage />} />
           <Route path="/planner" element={<TripPlannerPage />} />
+          <Route path="/buscar" element={<SearchResultsPage />} />
         </Routes>
       </main>
       <Footer />
