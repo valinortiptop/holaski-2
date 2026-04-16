@@ -8,8 +8,8 @@ export default function HomePage() {
       id: 1,
       name: 'Cerro Catedral',
       location: 'Bariloche, Argentina',
-      image: 'https://images.unsplash.com/photo-1551698618-1fed5d978204?auto=format&fit=crop&q=80&w=1200',
-      price: 'ARS 45.000',
+      image: 'https://images.unsplash.com/photo-1520113526514-445a2790ac11?auto=format&fit=crop&q=80&w=1200',
+      price: 'MXN 2,450',
       status: 'Abierto',
       snowDepth: '120cm'
     },
@@ -17,8 +17,8 @@ export default function HomePage() {
       id: 2,
       name: 'Las Leñas',
       location: 'Mendoza, Argentina',
-      image: 'https://images.unsplash.com/photo-1482867996988-29ec3aee816d?auto=format&fit=crop&q=80&w=1200',
-      price: 'ARS 52.000',
+      image: 'https://images.unsplash.com/photo-1476522383244-b21d41f57ad0?auto=format&fit=crop&q=80&w=1200',
+      price: 'MXN 3,200',
       status: 'Nieve en polvo',
       snowDepth: '185cm'
     },
@@ -26,8 +26,8 @@ export default function HomePage() {
       id: 3,
       name: 'Valle Nevado',
       location: 'Santiago, Chile',
-      image: 'https://images.unsplash.com/photo-1517231939912-d66c80b5ea8c?auto=format&fit=crop&q=80&w=1200',
-      price: 'CLP 65.000',
+      image: 'https://images.unsplash.com/photo-1614713568397-b32b97e46228?auto=format&fit=crop&q=80&w=1200',
+      price: 'MXN 4,500',
       status: 'Gran Nivel',
       snowDepth: '150cm'
     }
@@ -39,9 +39,9 @@ export default function HomePage() {
       <section className="relative h-[90vh] min-h-[600px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&q=80&w=2000" 
+            src="https://images.unsplash.com/photo-1551524559-8af4e6624178?auto=format&fit=crop&q=80&w=2000" 
             className="w-full h-full object-cover"
-            alt="Snow mountain"
+            alt="Snow mountain panorama"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/40 to-slate-950" />
         </div>
