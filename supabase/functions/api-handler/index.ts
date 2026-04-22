@@ -57,41 +57,61 @@ serve(async (req) => {
     return ok(result);
   } catch (e) {
     const msg = (e as Error).message;
-    console.error(`action error [${action}]:`, msg);
-    return err(msg, 500);
+    const stack = (e as Error).stack;
+    console.error(`[${action}] error:`, msg, stack);
+    return err(msg, 500, { action, detail: msg });
   }
 });
 
 // ────────────────────────────────────────────────────────────────
-// Shared proxy caller
+// Proxy caller — uses Valinor api-proxy v2 contract:
+// { provider, path, method, query?, body? }
 // ────────────────────────────────────────────────────────────────
 
 async function callProxy(
   proxyUrl: string,
   token: string,
-  payload: Record<string, unknown>,
+  request: {
+    provider: string;
+    path?: string;
+    endpoint?: string;
+    method?: string;
+    query?: Record<string, unknown>;
+    body?: Record<string, unknown>;
+    payload?: Record<string, unknown>;
+  },
   timeoutMs = 25000,
 ): Promise<any> {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
+  const started = Date.now();
+
   try {
+    console.log(`[proxy] → ${request.provider} ${request.method ?? "POST"} ${request.path ?? request.endpoint}`);
     const res = await fetch(proxyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-proxy-token": token },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(request),
       signal: ac.signal,
     });
     clearTimeout(t);
     const text = await res.text();
+    const ms = Date.now() - started;
+    console.log(`[proxy] ← ${request.provider} status=${res.status} ${ms}ms bytes=${text.length}`);
+
     if (!res.ok) {
-      // Surface proxy-side "provider not registered" clearly
-      if (res.status === 404 && /integration/i.test(text)) {
+      const snippet = text.slice(0, 500);
+      if (res.status === 404 && /integration|provider|not.*registered/i.test(text)) {
         throw new Error(
-          "hotelbeds_not_registered: Open /admin/integrations in Valinor and register 'hotelbeds' with auth=signature.",
+          `hotelbeds_not_registered: Hotelbeds is not registered in Valinor integrations_registry. Open /admin/integrations and register provider 'hotelbeds' with auth_type='signature'. Raw: ${snippet}`,
         );
       }
-      throw new Error(`proxy_${res.status}: ${text.slice(0, 300)}`);
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(`proxy_auth_failed (${res.status}): ${snippet}`);
+      }
+      throw new Error(`proxy_${res.status}: ${snippet}`);
     }
+
     try {
       return JSON.parse(text);
     } catch {
@@ -99,13 +119,13 @@ async function callProxy(
     }
   } catch (e) {
     clearTimeout(t);
-    if ((e as Error).name === "AbortError") throw new Error("proxy_timeout");
+    if ((e as Error).name === "AbortError") throw new Error("proxy_timeout_25s");
     throw e;
   }
 }
 
 // ────────────────────────────────────────────────────────────────
-// Hotelbeds handlers (via Valinor shared proxy)
+// Hotelbeds handlers
 // ────────────────────────────────────────────────────────────────
 
 async function searchHotels(
@@ -133,10 +153,14 @@ async function searchHotels(
     language?: string;
   };
 
-  if (!destinationCode) throw new Error("destinationCode_required");
-  if (!checkIn || !checkOut) throw new Error("dates_required");
+  if (!destinationCode) throw new Error("destinationCode_required (e.g. 'MEN' for Mendoza, 'PMI' for Palma)");
+  if (!checkIn || !checkOut) throw new Error("dates_required (format YYYY-MM-DD)");
 
-  const payload = {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(checkIn)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(checkOut))) {
+    throw new Error(`invalid_date_format: checkIn=${checkIn}, checkOut=${checkOut}. Must be YYYY-MM-DD.`);
+  }
+
+  const hbBody = {
     stay: { checkIn, checkOut },
     occupancies: [{ rooms, adults, children: Number(children) || 0 }],
     destination: { code: destinationCode },
@@ -144,16 +168,26 @@ async function searchHotels(
     language,
   };
 
+  console.log("[hotelbeds] search payload:", JSON.stringify(hbBody));
+
   const data = await callProxy(proxyUrl, token, {
     provider: "hotelbeds",
     path: "/hotel-api/1.0/hotels",
     method: "POST",
-    payload,
+    body: hbBody,
   });
 
-  const hotels = data?.hotels?.hotels ?? [];
+  const hotelsRaw = data?.hotels?.hotels ?? data?.hotels ?? [];
+  const total = data?.hotels?.total ?? (Array.isArray(hotelsRaw) ? hotelsRaw.length : 0);
+
+  console.log(`[hotelbeds] search ok: total=${total}, returned=${hotelsRaw.length}`);
+
+  if (!Array.isArray(hotelsRaw)) {
+    throw new Error(`unexpected_response_shape: ${JSON.stringify(data).slice(0, 300)}`);
+  }
+
   return {
-    hotels: hotels.map((h: any) => ({
+    hotels: hotelsRaw.map((h: any) => ({
       code: h.code,
       name: h.name,
       categoryName: h.categoryName,
@@ -166,9 +200,10 @@ async function searchHotels(
       maxRate: Number(h.maxRate ?? 0),
       rooms: h.rooms ?? [],
     })),
-    total: data?.hotels?.total ?? hotels.length,
+    total,
     checkIn: data?.hotels?.checkIn ?? checkIn,
     checkOut: data?.hotels?.checkOut ?? checkOut,
+    source: "hotelbeds_live",
   };
 }
 
@@ -201,13 +236,13 @@ async function checkRates(
     provider: "hotelbeds",
     path: "/hotel-api/1.0/checkrates",
     method: "POST",
-    payload: { rooms: [{ rateKey }] },
+    body: { rooms: [{ rateKey }] },
   });
   return data;
 }
 
 // ────────────────────────────────────────────────────────────────
-// Existing: AI package generator + contact (unchanged logic)
+// AI package + contact (unchanged behavior, updated proxy contract)
 // ────────────────────────────────────────────────────────────────
 
 async function generatePackage(
@@ -227,8 +262,9 @@ Devuelve EXACTAMENTE este JSON (precios en MXN):
       token,
       {
         provider: "gemini",
-        endpoint: "/v1beta/openai/chat/completions",
-        payload: {
+        path: "/v1beta/openai/chat/completions",
+        method: "POST",
+        body: {
           model: "gemini-2.0-flash",
           messages: [{ role: "user", content: prompt }],
         },
