@@ -1,89 +1,70 @@
 # Project Plan
 
-_Model: claude-opus-4-7 | Approved: 2026-04-16T23:08:07.959Z_
+_Model: claude-opus-4-7 | Approved: 2026-04-22T23:46:58.642Z_
 
-## Hotelbeds API Configuration Plan
+## Diagnóstico del problema Hotelbeds
 
-I'll walk through exactly how to wire Hotelbeds into HolaSki properly. No code yet — let's align on the approach first.
+Veo en el screenshot el banner amarillo "Mostrando hoteles de ejemplo — el inventario en vivo estará disponible pronto" y los precios en USD hardcodeados ($320, $180). Esto confirma que la llamada a Hotelbeds está fallando y el frontend está cayendo al fallback.
 
-### The Core Decision: Which Path to Take
+Antes de proponer el fix, necesito verificar exactamente **dónde** se rompe la cadena. Hay 4 puntos posibles de falla, y voy a revisarlos en orden.
 
-Looking at your project memory, there's been friction around CORS and Edge Function deployment. I see two possible architectures, and **only one is correct** per your platform rules:
-
-| Option | Approach | Verdict |
-|---|---|---|
-| **A** | Store `HOTELBEDS_API_KEY` + `HOTELBEDS_SECRET` directly in this project's Supabase secrets, sign requests inside `api-handler` | ❌ Violates platform rules |
-| **B** | Register Hotelbeds in Valinor's `integrations_registry` once, then call via the shared `api-proxy` from `api-handler` | ✅ Correct path |
-
-Per rule #21 (*Use api-proxy for all third-party APIs*): child projects must NOT wrap Hotelbeds themselves, must NOT store the API key/secret locally, and must NOT ask end-users for secrets. The signature generation (HMAC-SHA256 of `apiKey + secret + timestamp`) belongs in the Valinor proxy, not here.
-
-### What Hotelbeds Actually Requires
-
-From the web context and Hotelbeds docs, every request needs:
-
-- **`Api-key`** header — the public API key
-- **`X-Signature`** header — `SHA256(apiKey + secret + unixTimestamp)` (it's SHA-256, not HMAC, despite common confusion)
-- **`Accept: application/json`** and **`Accept-Encoding: gzip`**
-- **Base URL**: `https://api.test.hotelbeds.com` (sandbox) or `https://api.hotelbeds.com` (production)
-
-This is exactly the `signature` auth type the Valinor `api-proxy` supports (per rule #21: *"auto-resolves auth (api key, bearer, signature, query-param) from the integrations_registry"*).
-
-### Recommended Path: Register Hotelbeds in Valinor
-
-**Step 1 — You (admin) register Hotelbeds once in Valinor's integration registry:**
-
-- Open `/admin/integrations` in the Valinor admin panel
-- Click **Add Integration**
-- Provider name: `hotelbeds`
-- Auth type: `signature` (SHA-256 of `apiKey + secret + timestamp`)
-- API key: `e017e6436199af8134991a3c59ff13d2`
-- Secret: `b08aa0bef6` *(this looks truncated — Hotelbeds secrets are usually 10+ chars, please verify)*
-- Base URL: `https://api.test.hotelbeds.com` (start with sandbox)
-- Required headers: `Api-key`, `X-Signature`, `Accept: application/json`
-
-After that's done, **every** child project (including HolaSki) can call Hotelbeds through `api-proxy` with zero local config.
-
-**Step 2 — I refactor `api-handler` in HolaSki to use the shared proxy pattern:**
+### Cadena de llamadas actual
 
 ```
-Frontend → api-handler (HolaSki) → api-proxy (Valinor) → Hotelbeds
+Frontend (/buscar)
+  → supabase.functions.invoke('api-handler', { action: 'hotelbeds-search' })
+    → api-handler edge function
+      → supabase.functions.invoke('api-proxy', { provider: 'hotelbeds', ... })
+        → Valinor api-proxy (resuelve signature auth desde integrations_registry)
+          → api.test.hotelbeds.com / api.hotelbeds.com
 ```
 
-The `api-handler` becomes a thin orchestrator that just forwards `{ provider: 'hotelbeds', path: '...', method: 'POST', payload: {...} }`. No keys, no signing, no secrets in HolaSki.
+### Hipótesis ordenadas por probabilidad
 
-### Questions Before I Build
+1. **Hotelbeds no está registrado en `integrations_registry`** de Valinor con el `project_id` correcto, o el registro tiene `auth_type` mal configurado (debería ser `signature` con `api_key` + `secret`).
+2. **`api-handler` no está enviando el formato correcto** al `api-proxy` (p.ej. falta `method: 'POST'`, falta `body` con el payload de búsqueda, o el `path` está mal).
+3. **El payload de búsqueda de Hotelbeds está mal armado** (fechas formato `YYYY-MM-DD`, `destination.code` como IANA, `occupancies` como array, etc.) y Hotelbeds responde 400.
+4. **El try/catch en el frontend está atrapando cualquier error** y cayendo al mock sin loguear la causa real.
 
-1. **Is the secret `b08aa0bef6` complete?** Hotelbeds secrets are typically longer. Please double-check in your Hotelbeds developer dashboard — a wrong secret = `InvalidSignature` errors on every call.
+### Pasos de verificación que voy a ejecutar
 
-2. **Sandbox or production?** I strongly recommend starting with `api.test.hotelbeds.com` until we confirm the search/availability flow works end-to-end.
+Voy a lanzar verificaciones autónomas para confirmar el estado real antes de tocar código:
 
-3. **Has Hotelbeds been registered in Valinor yet?** If yes, I can skip straight to refactoring `api-handler`. If no, you'll need to register it first (I can't do that from inside HolaSki).
+:::verify:verify-query
+{
+  "id": "check-integrations-registry",
+  "query": "SELECT provider_slug, auth_type, base_url, is_active, created_at FROM public.integrations_registry WHERE provider_slug ILIKE '%hotelbeds%' OR provider_slug ILIKE '%hotel%'"
+}
+:::
 
-4. **Which Hotelbeds endpoints do we actually need right now?** My guess based on the app:
-   - `POST /hotel-api/1.0/hotels` — availability search (date range, destination, occupancy)
-   - `GET /hotel-content-api/1.0/hotels/{code}/details` — hotel details page
-   - `POST /hotel-api/1.0/checkrates` — confirm price before booking
-   - *(Bookings come later — let's not wire that until search works.)*
+:::verify:verify-query
+{
+  "id": "check-all-integrations",
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%integration%'"
+}
+:::
 
-### What I'll Build Once You Confirm
+:::verify:verify-query
+{
+  "id": "check-api-handler-logs-table",
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+}
+:::
 
-- **Refactor `api-handler`** — `search-hotels` and new `hotel-details`, `check-rates` actions, all routed through `api-proxy` with `provider: 'hotelbeds'`
-- **Add a ski-destination filter** — Hotelbeds has `destinationCode` for ski areas (e.g., `BRC` Bariloche, `LEN` Las Leñas, `VNV` Valle Nevado); I'll hardcode the mapping
-- **Update `SearchResultsPage`** — wire real Hotelbeds response shape (hotels, rates in MXN via `currency: 'MXN'` param), pagination, empty states, loading skeletons
-- **Add resilient fallback** — if Hotelbeds is down or returns empty, show the existing hardcoded resort cards with a soft "Mostrando destinos destacados" banner (per the graceful-degradation rule)
+### Preguntas críticas para ti
 
-### Verification I'll Run After Build
+Mientras corren las verificaciones, necesito que confirmes dos cosas:
 
-```
-:::verify:verify-query — confirm leads table captures hotelbeds rate_key on inquiry submit
-:::verify: — ping api-handler with { action: "search-hotels", destinationCode: "BRC", ... } and confirm 200 + hotel array
-```
+- **¿Registraste Hotelbeds en `/admin/integrations` de Valinor?** La memoria del proyecto dice "Configured Hotelbeds in the integrations_registry using the auth: signature method", pero necesito confirmar que el registro está **activo** y asociado a este `project_id` (HolaSki). Si lo registraste solo a nivel global pero no para este proyecto, el `api-proxy` lo rechazará.
+- **¿Tenés credenciales de producción o de test?** Hotelbeds tiene dos entornos: `api.test.hotelbeds.com` (sandbox, datos limitados, pocos hoteles en Mendoza/Argentina) y `api.hotelbeds.com` (producción, requiere contrato activo). Si estás usando test, es normal que devuelva 0 resultados para Las Leñas porque el sandbox tiene inventario reducido a ciertas ciudades de Europa.
 
-### Please Confirm
+### Plan de acción (una vez confirmado)
 
-1. ✅ / ❌ Secret `b08aa0bef6` is complete (or paste the full one)
-2. ✅ Sandbox first, ❌ production first
-3. Is Hotelbeds already registered in Valinor's `/admin/integrations`?
-4. Endpoints I listed look right, or anything to add/remove?
+Dependiendo de lo que arrojen las verificaciones:
 
-Once you answer, say **"build it"** and I'll ship the full refactor in one shot.
+- **Si `integrations_registry` está vacío o inactivo** → hay que registrarlo en Valinor admin panel. Yo no puedo insertar ahí desde este proyecto hijo.
+- **Si está registrado pero el `api-handler` no lo invoca bien** → refactorizo `supabase/functions/api-handler/index.ts` para que use el patrón correcto `{ provider: 'hotelbeds', path: '/hotel-api/1.0/hotels', method: 'POST', body: {...} }`.
+- **Si está todo bien pero Hotelbeds devuelve vacío** → agrego logging detallado y muestro el error real en el banner (en vez del mensaje genérico de "próximamente"), más un toggle para ver la respuesta cruda en modo debug.
+- **Además, en todos los casos**: voy a cambiar el fallback para que, cuando falle Hotelbeds, muestre un error accionable ("Error: [mensaje real de la API]") en lugar del banner silencioso, así la próxima vez el problema es visible de inmediato.
+
+Esperá los resultados de las verificaciones y respondeme las dos preguntas. Con eso te armo el fix exacto.
