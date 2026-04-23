@@ -1,7 +1,7 @@
 \s*/g, "").trim();
     return JSON.parse(clean);
   } catch (e) {
-    console.error("generatePackage failed:", (e as Error).message);
+    console.error("generatePackage AI failed:", (e as Error).message);
     return {
       resort_name: String(p.destination ?? "Destino"),
       hotel: { name: "Hotel Sugerido", description: "Hotel ski-in/ski-out de primera clase.", stars: 4 },
@@ -16,11 +16,7 @@
   }
 }
 
-async function sendContact(
-  p: Record<string, unknown>,
-  proxyUrl: string,
-  token: string,
-) {
+async function sendContact(p: Record<string, unknown>, proxyUrl: string, token: string) {
   const data = await callProxy(proxyUrl, token, {
     provider: "resend",
     path: "/emails",
