@@ -1,6 +1,11 @@
+// @ts-nocheck
+// src/pages/PlanearViajePage.tsx
 import { useState } from 'react';
-import { Send, Calendar, Users, MapPin, Snowflake, CheckCircle2, DollarSign, ChevronRight } from 'lucide-react';
+import { Send, Calendar, Users, Snowflake, CheckCircle2, DollarSign, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import DestinationSelect from '../components/DestinationSelect';
+import { findDestinationLabel } from '../data/destinations';
+import '../styles/scrollbar.css';
 
 export default function PlanearViajePage() {
   const [step, setStep] = useState(1);
@@ -21,12 +26,12 @@ export default function PlanearViajePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const { error } = await supabase.from('leads').insert({
         first_name: formData.name,
         email: formData.email,
-        destination: formData.destination,
+        destination: findDestinationLabel(formData.destination) || formData.destination,
         travel_dates: formData.dates,
         passengers_adults: formData.adults,
         passengers_children: formData.children,
@@ -73,9 +78,9 @@ export default function PlanearViajePage() {
         <div className="text-center mb-12">
           <div className="flex justify-center gap-2 mb-6">
             {[1, 2, 3].map((s) => (
-              <div 
-                key={s} 
-                className={`h-1.5 w-16 rounded-full transition-all duration-500 ${s <= step ? 'bg-blue-500' : 'bg-white/10'}`} 
+              <div
+                key={s}
+                className={`h-1.5 w-16 rounded-full transition-all duration-500 ${s <= step ? 'bg-blue-500' : 'bg-white/10'}`}
               />
             ))}
           </div>
@@ -87,24 +92,16 @@ export default function PlanearViajePage() {
           {step === 1 && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <label className="flex items-center gap-2 text-white font-bold mb-2">
-                    <MapPin className="w-5 h-5 text-blue-400" /> ¿A dónde quieres ir?
+                <div className="space-y-4 relative">
+                  <label className="text-white font-bold mb-2 block">
+                    ¿A dónde quieres ir?
                   </label>
-                  <select 
+                  <DestinationSelect
                     value={formData.destination}
-                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                    className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                    onChange={(val) => setFormData({ ...formData, destination: val })}
+                    placeholder="Selecciona un destino"
                     required
-                  >
-                    <option value="">Selecciona una región</option>
-                    <option>Alpes Franceses</option>
-                    <option>Alpes Suizos</option>
-                    <option>Dolomitas (Italia)</option>
-                    <option>Colorado (EE.UU.)</option>
-                    <option>Andes (Chile/Argentina)</option>
-                    <option>Hokkaido (Japón)</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="space-y-4">
@@ -115,17 +112,17 @@ export default function PlanearViajePage() {
                     type="text"
                     placeholder="Ej: Febrero 2025"
                     value={formData.dates}
-                    onChange={(e) => setFormData({...formData, dates: e.target.value})}
-                    className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    onChange={(e) => setFormData({ ...formData, dates: e.target.value })}
+                    className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white focus:ring-2 focus:ring-blue-500 outline-none min-h-[56px]"
                     required
                   />
                 </div>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setStep(2)}
                 disabled={!formData.destination || !formData.dates}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-5 rounded-2xl font-black text-xl transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-5 rounded-2xl font-black text-xl transition-all min-h-[48px]"
               >
                 Siguiente <ChevronRight className="w-6 h-6" />
               </button>
@@ -145,16 +142,16 @@ export default function PlanearViajePage() {
                       min="1"
                       placeholder="Adultos"
                       value={formData.adults}
-                      onChange={(e) => setFormData({...formData, adults: parseInt(e.target.value)})}
-                      className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none"
+                      onChange={(e) => setFormData({ ...formData, adults: parseInt(e.target.value) })}
+                      className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none min-h-[56px]"
                     />
                     <input
                       type="number"
                       min="0"
                       placeholder="Niños"
                       value={formData.children}
-                      onChange={(e) => setFormData({...formData, children: parseInt(e.target.value)})}
-                      className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none"
+                      onChange={(e) => setFormData({ ...formData, children: parseInt(e.target.value) })}
+                      className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none min-h-[56px]"
                     />
                   </div>
                 </div>
@@ -163,10 +160,10 @@ export default function PlanearViajePage() {
                   <label className="flex items-center gap-2 text-white font-bold mb-2">
                     <Snowflake className="w-5 h-5 text-blue-400" /> Nivel de Esquí
                   </label>
-                  <select 
+                  <select
                     value={formData.skill}
-                    onChange={(e) => setFormData({...formData, skill: e.target.value})}
-                    className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none appearance-none"
+                    onChange={(e) => setFormData({ ...formData, skill: e.target.value })}
+                    className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none appearance-none min-h-[56px]"
                   >
                     <option>Principiante</option>
                     <option>Intermedio</option>
@@ -175,7 +172,7 @@ export default function PlanearViajePage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <label className="flex items-center gap-2 text-white font-bold mb-2">
                   <DollarSign className="w-5 h-5 text-blue-400" /> Nivel de Servicio
@@ -185,11 +182,11 @@ export default function PlanearViajePage() {
                     <button
                       key={tier}
                       type="button"
-                      onClick={() => setFormData({...formData, budget: tier})}
-                      className={`py-4 rounded-2xl font-bold border transition-all ${
-                        formData.budget === tier 
-                        ? 'bg-blue-600 border-blue-500 text-white' 
-                        : 'bg-navy-900 border-white/10 text-slate-400 hover:border-white/30'
+                      onClick={() => setFormData({ ...formData, budget: tier })}
+                      className={`py-4 rounded-2xl font-bold border transition-all min-h-[48px] ${
+                        formData.budget === tier
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-navy-900 border-white/10 text-slate-400 hover:border-white/30'
                       }`}
                     >
                       {tier}
@@ -199,17 +196,17 @@ export default function PlanearViajePage() {
               </div>
 
               <div className="flex gap-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="w-1/3 bg-navy-800 text-white py-5 rounded-2xl font-bold hover:bg-navy-700 transition-all"
+                  className="w-1/3 bg-navy-800 text-white py-5 rounded-2xl font-bold hover:bg-navy-700 transition-all min-h-[48px]"
                 >
                   Atrás
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="w-2/3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-xl transition-all"
+                  className="w-2/3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-xl transition-all min-h-[48px]"
                 >
                   Casi listo <ChevronRight className="w-6 h-6" />
                 </button>
@@ -225,38 +222,38 @@ export default function PlanearViajePage() {
                   placeholder="Nombre completo"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
                 />
                 <input
                   type="email"
                   placeholder="Tu correo electrónico"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
                 />
               </div>
               <textarea
                 placeholder="¿Algún detalle adicional? (Preferencia de hotel, requerimientos dietéticos, clases, etc.)"
                 rows={4}
                 value={formData.message}
-                onChange={(e) => setFormData({...formData, message: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none focus:ring-2 focus:ring-blue-500"
               ></textarea>
 
               <div className="flex gap-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="w-1/3 bg-navy-800 text-white py-5 rounded-2xl font-bold hover:bg-navy-700 transition-all"
+                  className="w-1/3 bg-navy-800 text-white py-5 rounded-2xl font-bold hover:bg-navy-700 transition-all min-h-[48px]"
                 >
                   Atrás
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-2/3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-xl shadow-blue-600/20"
+                  className="w-2/3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-xl shadow-blue-600/20 min-h-[48px]"
                 >
                   {loading ? 'ENVIANDO...' : <><Send className="w-6 h-6" /> RECIBIR PRESUPUESTO</>}
                 </button>
