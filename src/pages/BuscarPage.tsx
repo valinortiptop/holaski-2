@@ -2,7 +2,7 @@
 // src/pages/BuscarPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Mountain, Activity, ArrowLeft, Calendar, Users } from 'lucide-react';
+import { Search, MapPin, Mountain, Activity, ArrowLeft, Calendar, Users, SlidersHorizontal, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import DestinationSelect from '../components/DestinationSelect';
 import { findDestinationLabel } from '../data/destinations';
@@ -35,6 +35,7 @@ export default function BuscarPage() {
   const [resorts, setResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [destFilter, setDestFilter] = useState(searchParams.get('destination') || '');
   const [dates, setDates] = useState(searchParams.get('dates') || '');
@@ -44,35 +45,24 @@ export default function BuscarPage() {
     let cancelled = false;
 
     async function load() {
-      console.log('[HolaSki] Starting resorts fetch...');
       setLoading(true);
       setError(null);
 
       try {
-        const { data, error: dbError, status } = await supabase
+        const { data, error: dbError } = await supabase
           .from('resorts')
           .select('id, slug, name, country, region, altitude_top, altitude_base, runs_total, lifts_total, image_url, price_level, description')
           .order('name', { ascending: true });
 
-        console.log('[HolaSki] Response status:', status);
-        console.log('[HolaSki] Error:', dbError);
-        console.log('[HolaSki] Data length:', data?.length ?? 0);
-
         if (cancelled) return;
 
-        if (dbError) {
-          console.warn('[HolaSki] DB error, using fallback');
+        if (dbError || !data || data.length === 0) {
           setResorts(FALLBACK_RESORTS);
-          setError('Mostrando destinos de ejemplo');
-        } else if (!data || data.length === 0) {
-          setResorts(FALLBACK_RESORTS);
-          setError('Mostrando destinos de ejemplo');
+          if (dbError) setError('Mostrando destinos de ejemplo');
         } else {
-          console.log('[HolaSki] Loaded', data.length, 'resorts. First:', data[0]?.name);
           setResorts(data as Resort[]);
         }
-      } catch (err) {
-        console.error('[HolaSki] Fetch exception:', err);
+      } catch {
         if (!cancelled) {
           setResorts(FALLBACK_RESORTS);
           setError('Sin conexión. Mostrando destinos de ejemplo.');
@@ -106,6 +96,14 @@ export default function BuscarPage() {
     if (dates) params.set('dates', dates);
     if (travelers) params.set('travelers', travelers);
     setSearchParams(params);
+    setFiltersOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDestFilter('');
+    setDates('');
+    setTravelers('2 adultos');
+    setSearchParams(new URLSearchParams());
   };
 
   const priceLabel = (lvl?: number) => {
@@ -113,58 +111,70 @@ export default function BuscarPage() {
     return '$'.repeat(Math.max(1, Math.min(4, lvl)));
   };
 
+  const activeFiltersCount = [destFilter, dates].filter(Boolean).length;
+  const destLabel = destFilter ? findDestinationLabel(destFilter) || destFilter : '';
+
   return (
-    <div className="min-h-screen bg-navy-900 pt-28 pb-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="relative bg-navy-950/80 backdrop-blur-xl border border-white/10 rounded-3xl p-4 md:p-6 mb-10 shadow-xl">
-          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_auto] gap-3 items-end">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 block">
-                Destino
-              </label>
-              <DestinationSelect value={destFilter} onChange={setDestFilter} placeholder="Todos los destinos" />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Fechas
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: Julio 2025"
-                value={dates}
-                onChange={(e) => setDates(e.target.value)}
-                className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none min-h-[48px]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
-                <Users className="w-3 h-3" /> Viajeros
-              </label>
-              <select
-                value={travelers}
-                onChange={(e) => setTravelers(e.target.value)}
-                className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-blue-500/50 focus:outline-none appearance-none cursor-pointer min-h-[48px]"
-              >
-                <option>1 adulto</option>
-                <option>2 adultos</option>
-                <option>3 adultos</option>
-                <option>4 adultos</option>
-                <option>Familia (2+2)</option>
-              </select>
-            </div>
-            <button
-              onClick={handleNewSearch}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-2xl px-6 py-3 flex items-center justify-center gap-2 transition-all min-h-[48px]"
-            >
-              <Search className="w-5 h-5" />
-              <span>Buscar</span>
-            </button>
+    <div className="min-h-screen bg-navy-900 pt-24 md:pt-28 pb-20">
+      {/* Header with results count */}
+      <div className="sticky top-16 md:top-20 z-30 bg-navy-900/95 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg md:text-2xl font-black text-white uppercase tracking-tight">
+              {loading ? 'Buscando...' : `${filteredResorts.length} ${filteredResorts.length === 1 ? 'destino' : 'destinos'}`}
+            </h1>
+            {destLabel && (
+              <p className="text-xs md:text-sm text-slate-400 truncate max-w-[220px] md:max-w-none">
+                en {destLabel}
+              </p>
+            )}
           </div>
-          <div className="mt-3 text-sm text-slate-400">
-            {travelers} • {filteredResorts.length} {filteredResorts.length === 1 ? 'resultado' : 'resultados'}
-          </div>
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="relative flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider text-sm rounded-full px-4 md:px-5 py-2.5 transition-all min-h-[44px]"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline">Filtros</span>
+            {activeFiltersCount > 0 && (
+              <span className="bg-white text-blue-600 text-xs font-black rounded-full w-5 h-5 flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
         </div>
 
+        {/* Active filter chips */}
+        {(destFilter || dates) && (
+          <div className="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-2 overflow-x-auto">
+            {destFilter && (
+              <button
+                onClick={() => setDestFilter('')}
+                className="flex items-center gap-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-200 text-xs font-bold rounded-full px-3 py-1.5 whitespace-nowrap hover:bg-blue-600/30 transition-colors"
+              >
+                <MapPin className="w-3 h-3" /> {destLabel}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {dates && (
+              <button
+                onClick={() => setDates('')}
+                className="flex items-center gap-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-200 text-xs font-bold rounded-full px-3 py-1.5 whitespace-nowrap hover:bg-blue-600/30 transition-colors"
+              >
+                <Calendar className="w-3 h-3" /> {dates}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            <button
+              onClick={clearFilters}
+              className="text-xs text-slate-400 hover:text-white underline whitespace-nowrap ml-2"
+            >
+              Limpiar
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 mt-6">
         {error && !loading && (
           <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-sm">
             ⚠ {error}
@@ -172,13 +182,15 @@ export default function BuscarPage() {
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-navy-950/50 border border-white/5 rounded-3xl p-6">
-                <div className="h-6 w-3/4 bg-white/5 rounded animate-pulse mb-3" />
-                <div className="h-4 w-full bg-white/5 rounded animate-pulse mb-2" />
-                <div className="h-4 w-2/3 bg-white/5 rounded animate-pulse mb-6" />
-                <div className="h-10 w-full bg-white/5 rounded-xl animate-pulse" />
+              <div key={i} className="bg-navy-950/50 border border-white/5 rounded-3xl overflow-hidden">
+                <div className="aspect-video bg-white/5 animate-pulse" />
+                <div className="p-5">
+                  <div className="h-6 w-3/4 bg-white/5 rounded animate-pulse mb-3" />
+                  <div className="h-4 w-1/2 bg-white/5 rounded animate-pulse mb-4" />
+                  <div className="h-4 w-full bg-white/5 rounded animate-pulse" />
+                </div>
               </div>
             ))}
           </div>
@@ -190,7 +202,7 @@ export default function BuscarPage() {
             <h2 className="text-2xl font-black text-white mb-2 uppercase">Sin resultados</h2>
             <p className="text-slate-400 mb-6">No encontramos destinos que coincidan con tu búsqueda.</p>
             <button
-              onClick={() => setDestFilter('')}
+              onClick={clearFilters}
               className="text-blue-400 hover:text-blue-300 font-bold inline-flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" /> Ver todos los destinos
@@ -199,7 +211,7 @@ export default function BuscarPage() {
         )}
 
         {!loading && filteredResorts.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {filteredResorts.map((resort) => (
               <button
                 key={resort.id}
@@ -228,11 +240,9 @@ export default function BuscarPage() {
                   </div>
                 </div>
                 <div className="p-5">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight truncate">
-                      {resort.name}
-                    </h3>
-                  </div>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight truncate mb-2">
+                    {resort.name}
+                  </h3>
                   <div className="flex items-center gap-1 text-sm text-slate-400 mb-4">
                     <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">
@@ -259,16 +269,81 @@ export default function BuscarPage() {
             ))}
           </div>
         )}
-
-        <div className="text-center mt-12">
-          <button
-            onClick={() => navigate('/')}
-            className="text-slate-400 hover:text-white font-bold inline-flex items-center gap-2 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Nueva búsqueda
-          </button>
-        </div>
       </div>
+
+      {/* Filter panel — bottom sheet on mobile, modal on desktop */}
+      {filtersOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setFiltersOpen(false)}
+          />
+          <div className="relative w-full md:max-w-lg bg-navy-950 border-t md:border border-white/10 rounded-t-3xl md:rounded-3xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Filtros</h2>
+              <button
+                onClick={() => setFiltersOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 block">
+                  Destino
+                </label>
+                <DestinationSelect value={destFilter} onChange={setDestFilter} placeholder="Todos los destinos" />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> Fechas
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Julio 2025"
+                  value={dates}
+                  onChange={(e) => setDates(e.target.value)}
+                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none min-h-[48px]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
+                  <Users className="w-3 h-3" /> Viajeros
+                </label>
+                <select
+                  value={travelers}
+                  onChange={(e) => setTravelers(e.target.value)}
+                  className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-blue-500/50 focus:outline-none appearance-none cursor-pointer min-h-[48px]"
+                >
+                  <option>1 adulto</option>
+                  <option>2 adultos</option>
+                  <option>3 adultos</option>
+                  <option>4 adultos</option>
+                  <option>Familia (2+2)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={clearFilters}
+                className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold uppercase tracking-wider rounded-2xl px-6 py-3 transition-all min-h-[48px]"
+              >
+                Limpiar
+              </button>
+              <button
+                onClick={handleNewSearch}
+                className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-2xl px-6 py-3 flex items-center justify-center gap-2 transition-all min-h-[48px]"
+              >
+                <Search className="w-5 h-5" />
+                Ver resultados
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
