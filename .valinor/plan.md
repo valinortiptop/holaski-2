@@ -1,69 +1,58 @@
 # Project Plan
 
-_Model: claude-opus-4-7 | Approved: 2026-04-24T17:06:57.735Z_
+_Model: claude-opus-4-7 | Approved: 2026-04-24T17:17:42.056Z_
 
-## Plan: Fix Destination Dropdown Overflow & Group by Country
+## Investigation
 
-### Problem Analysis
+Looking at your screenshots carefully:
 
-Looking at the screenshot, I can identify two clear issues with the "¿A dónde quieres ir?" destination dropdown:
+### Screenshot 1 — Hero Dropdown (still broken)
+The dropdown on the **homepage hero** is still the OLD one — flat list (Cerro Catedral → Las Leñas → Valle Nevado → Chapelco → Whistler), no country groups, no sticky headers, and **cut off at the bottom**. This means the hero component is rendering its own inline dropdown — NOT using my new `DestinationSelect`. I need to find that hero component and patch it directly.
 
-- **Clipping issue** — The dropdown is being cut off at the bottom. "Whistler, Canadá" is half-visible and any destinations below it are completely hidden. This suggests the dropdown's parent container has `overflow: hidden` (likely the hero search card) or the dropdown height is constrained without scrolling enabled.
-- **Flat list** — Destinations are shown as one long flat list with no visual hierarchy, making it hard to scan when the list grows beyond 5–6 items.
+### Screenshot 2 — Planear Viaje page
+You're seeing a blank page that just shows the footer. This means `PlanearViajePage.tsx` is either not routed correctly, or the route renders but the component doesn't mount. Mobile view + footer visible = content area is empty.
 
-### Root Cause
+## What I'll Do
 
-Based on the project structure, the search widget lives in the hero section (likely `src/components/HeroSearch.tsx` or similar, rendered on the landing page). The dropdown is almost certainly rendered as a **regular child** of the search card — so when the card has rounded corners + `overflow-hidden` for the glassmorphism effect, it clips the dropdown.
+Since I can't see the exact hero file in my context, I need you to tell me **one thing** so I patch the right file on the first shot:
 
-Two possible fixes, and I recommend combining them:
+**In your repo, which file contains the hero section with the text "AVENTURA EN NIEVE" and the "¿A dónde quieres ir?" input?**
 
-### Proposed Solution
+Most likely candidates based on common patterns:
+- `src/components/Hero.tsx`
+- `src/components/HeroSearch.tsx`
+- `src/pages/HomePage.tsx` (inline hero)
+- `src/pages/Index.tsx`
+- `src/components/sections/Hero.tsx`
 
-### 1. Fix the clipping
+### My Plan Once You Confirm
 
-Two approaches — I'll go with **option A** because it keeps layout simple and works reliably on mobile:
+**1. Fix the hero dropdown (correct file)**
+- Replace the inline destination `<select>` / custom dropdown with `<DestinationSelect />`
+- Remove any `overflow-hidden` on the parent search card that's clipping the dropdown
+- Ensure the parent has `position: relative` and NO `overflow-hidden` so `z-50` absolute dropdown escapes
 
-- **Option A (recommended)** — Give the dropdown `position: absolute`, a fixed `max-height` (e.g. `max-h-80` ≈ 320px or `max-h-96` ≈ 384px), and `overflow-y-auto`. Ensure the parent container does NOT have `overflow-hidden` on the axis where the dropdown expands. Use a high `z-index` (e.g. `z-50`) so it floats above the hero content below.
-- **Option B** — Use a portal (`createPortal`) to render the dropdown at the document body level. More complex, only needed if parent clipping can't be removed.
+**2. Fix `PlanearViajePage.tsx` showing blank**
+Likely causes I'll investigate:
+- **Route not registered** in `App.tsx` → the path `/planear` or `/planear-viaje` points nowhere, so only layout shell renders
+- **Import path mismatch** → case-sensitivity issue (`PlanearViajePage` vs `PlanearViaje`)
+- **Runtime error** in the component throwing silently → needs error boundary check
+- **Default export missing** → lazy import returns undefined
 
-### 2. Group destinations by country
+**3. Verify after fix**
+I'll emit `:::verify:` blocks to confirm:
+- The routes registered
+- The component mounted
+- No console errors
 
-Restructure the data from a flat array into a grouped structure:
+## Quick Diagnostic I Can Do Right Now
 
-```
-{
-  "Argentina": ["Cerro Catedral, Bariloche", "Las Leñas, Mendoza", "Chapelco, San Martín"],
-  "Chile": ["Valle Nevado, Santiago", "Portillo", ...],
-  "Canadá": ["Whistler", "Banff", ...],
-  "Estados Unidos": ["Aspen", "Vail", "Park City", ...],
-  "Francia": ["Chamonix", "Val d'Isère", ...],
-  ...
-}
-```
+Can you also tell me:
 
-Each country gets a **sticky header** (`sticky top-0`) inside the scrollable dropdown so users always know which country they're browsing while scrolling.
+1. **What URL do you navigate to** for Planear Viaje? (`/planear`, `/planear-viaje`, `/plan`?)
+2. **Does the footer link "Planear Viaje"** lead to the blank page, or does clicking it do nothing?
+3. **Open browser DevTools → Console** on the blank Planear page — any red errors? (This tells me immediately if it's a runtime error vs routing issue)
 
-### 3. UX polish
+Once I know the hero file name + the route path, I can push both fixes in one shot and verify them. Without that, I'd be guessing and creating more files that don't get wired up — same failure mode as last turn.
 
-- **Sticky country headers** — small uppercase label with subtle background (`bg-slate-900/95 backdrop-blur`) that stays pinned while scrolling within its group.
-- **Custom scrollbar** — thin styled scrollbar that matches the dark glassmorphism theme (Tailwind `scrollbar-thin` utility via plugin, or custom CSS).
-- **Keyboard accessibility** — arrow up/down to navigate, Enter to select, Escape to close. Maintain current focus behavior.
-- **Search filtering** — as the user types, filter destinations across ALL countries. If a country has no matches after filtering, hide its header entirely.
-- **Click outside to close** — already likely implemented; preserve it.
-- **Smooth max-height** — `max-h-80` (320px) on mobile, `max-h-96` (384px) on desktop via responsive classes.
-
-### Files I'd Touch
-
-| File | Change |
-|------|--------|
-| `src/components/HeroSearch.tsx` (or wherever the dropdown lives) | Add scroll container, grouped rendering, sticky headers, z-index fix |
-| `src/data/destinations.ts` (new, or inline) | Export grouped destination data structure `Record<string, Destination[]>` |
-| Parent hero card | Remove `overflow-hidden` on the axis where dropdown expands (or switch to `overflow-visible` if safe) |
-
-### Questions Before I Implement
-
-1. **File location** — Can you confirm the component file for the hero search with the "¿A dónde quieres ir?" field? I'd guess `src/components/HeroSearch.tsx` or it's inline in `src/pages/Index.tsx`. Referenced files (`DestinationsByCountry.tsx`, `PopularDestinations.tsx`, `DestinationsPage.tsx`) are the *destinations listing* pages — not the search dropdown. Which file should I edit for the dropdown?
-2. **Destinations list** — Do you want me to **expand** the destinations list (e.g. add full Alps, Rockies, Japan, Andes) organized by country, or **keep the exact same list** currently shown and just reorganize it by country?
-3. **Behavior preference** — Should clicking a country header collapse/expand that country's group (accordion style), or should all groups always be open and the user just scrolls through them? I'd recommend **always open + sticky headers** for a smoother feel, but open to accordion if you prefer.
-
-Once you confirm these three points, I'll implement it in a single response with all files ready to go.
+**Alternatively**, if you want me to just proceed with my best guess: I'll assume hero is in `src/components/Hero.tsx` and Planear route is `/planear-viaje`, patch those, and fall back gracefully if wrong. Say "proceed with best guess" and I'll go.
