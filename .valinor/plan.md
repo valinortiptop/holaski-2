@@ -1,70 +1,69 @@
 # Project Plan
 
-_Model: claude-opus-4-7 | Approved: 2026-04-22T23:46:58.642Z_
+_Model: claude-opus-4-7 | Approved: 2026-04-24T17:06:57.735Z_
 
-## Diagnóstico del problema Hotelbeds
+## Plan: Fix Destination Dropdown Overflow & Group by Country
 
-Veo en el screenshot el banner amarillo "Mostrando hoteles de ejemplo — el inventario en vivo estará disponible pronto" y los precios en USD hardcodeados ($320, $180). Esto confirma que la llamada a Hotelbeds está fallando y el frontend está cayendo al fallback.
+### Problem Analysis
 
-Antes de proponer el fix, necesito verificar exactamente **dónde** se rompe la cadena. Hay 4 puntos posibles de falla, y voy a revisarlos en orden.
+Looking at the screenshot, I can identify two clear issues with the "¿A dónde quieres ir?" destination dropdown:
 
-### Cadena de llamadas actual
+- **Clipping issue** — The dropdown is being cut off at the bottom. "Whistler, Canadá" is half-visible and any destinations below it are completely hidden. This suggests the dropdown's parent container has `overflow: hidden` (likely the hero search card) or the dropdown height is constrained without scrolling enabled.
+- **Flat list** — Destinations are shown as one long flat list with no visual hierarchy, making it hard to scan when the list grows beyond 5–6 items.
+
+### Root Cause
+
+Based on the project structure, the search widget lives in the hero section (likely `src/components/HeroSearch.tsx` or similar, rendered on the landing page). The dropdown is almost certainly rendered as a **regular child** of the search card — so when the card has rounded corners + `overflow-hidden` for the glassmorphism effect, it clips the dropdown.
+
+Two possible fixes, and I recommend combining them:
+
+### Proposed Solution
+
+### 1. Fix the clipping
+
+Two approaches — I'll go with **option A** because it keeps layout simple and works reliably on mobile:
+
+- **Option A (recommended)** — Give the dropdown `position: absolute`, a fixed `max-height` (e.g. `max-h-80` ≈ 320px or `max-h-96` ≈ 384px), and `overflow-y-auto`. Ensure the parent container does NOT have `overflow-hidden` on the axis where the dropdown expands. Use a high `z-index` (e.g. `z-50`) so it floats above the hero content below.
+- **Option B** — Use a portal (`createPortal`) to render the dropdown at the document body level. More complex, only needed if parent clipping can't be removed.
+
+### 2. Group destinations by country
+
+Restructure the data from a flat array into a grouped structure:
 
 ```
-Frontend (/buscar)
-  → supabase.functions.invoke('api-handler', { action: 'hotelbeds-search' })
-    → api-handler edge function
-      → supabase.functions.invoke('api-proxy', { provider: 'hotelbeds', ... })
-        → Valinor api-proxy (resuelve signature auth desde integrations_registry)
-          → api.test.hotelbeds.com / api.hotelbeds.com
+{
+  "Argentina": ["Cerro Catedral, Bariloche", "Las Leñas, Mendoza", "Chapelco, San Martín"],
+  "Chile": ["Valle Nevado, Santiago", "Portillo", ...],
+  "Canadá": ["Whistler", "Banff", ...],
+  "Estados Unidos": ["Aspen", "Vail", "Park City", ...],
+  "Francia": ["Chamonix", "Val d'Isère", ...],
+  ...
+}
 ```
 
-### Hipótesis ordenadas por probabilidad
+Each country gets a **sticky header** (`sticky top-0`) inside the scrollable dropdown so users always know which country they're browsing while scrolling.
 
-1. **Hotelbeds no está registrado en `integrations_registry`** de Valinor con el `project_id` correcto, o el registro tiene `auth_type` mal configurado (debería ser `signature` con `api_key` + `secret`).
-2. **`api-handler` no está enviando el formato correcto** al `api-proxy` (p.ej. falta `method: 'POST'`, falta `body` con el payload de búsqueda, o el `path` está mal).
-3. **El payload de búsqueda de Hotelbeds está mal armado** (fechas formato `YYYY-MM-DD`, `destination.code` como IANA, `occupancies` como array, etc.) y Hotelbeds responde 400.
-4. **El try/catch en el frontend está atrapando cualquier error** y cayendo al mock sin loguear la causa real.
+### 3. UX polish
 
-### Pasos de verificación que voy a ejecutar
+- **Sticky country headers** — small uppercase label with subtle background (`bg-slate-900/95 backdrop-blur`) that stays pinned while scrolling within its group.
+- **Custom scrollbar** — thin styled scrollbar that matches the dark glassmorphism theme (Tailwind `scrollbar-thin` utility via plugin, or custom CSS).
+- **Keyboard accessibility** — arrow up/down to navigate, Enter to select, Escape to close. Maintain current focus behavior.
+- **Search filtering** — as the user types, filter destinations across ALL countries. If a country has no matches after filtering, hide its header entirely.
+- **Click outside to close** — already likely implemented; preserve it.
+- **Smooth max-height** — `max-h-80` (320px) on mobile, `max-h-96` (384px) on desktop via responsive classes.
 
-Voy a lanzar verificaciones autónomas para confirmar el estado real antes de tocar código:
+### Files I'd Touch
 
-:::verify:verify-query
-{
-  "id": "check-integrations-registry",
-  "query": "SELECT provider_slug, auth_type, base_url, is_active, created_at FROM public.integrations_registry WHERE provider_slug ILIKE '%hotelbeds%' OR provider_slug ILIKE '%hotel%'"
-}
-:::
+| File | Change |
+|------|--------|
+| `src/components/HeroSearch.tsx` (or wherever the dropdown lives) | Add scroll container, grouped rendering, sticky headers, z-index fix |
+| `src/data/destinations.ts` (new, or inline) | Export grouped destination data structure `Record<string, Destination[]>` |
+| Parent hero card | Remove `overflow-hidden` on the axis where dropdown expands (or switch to `overflow-visible` if safe) |
 
-:::verify:verify-query
-{
-  "id": "check-all-integrations",
-  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%integration%'"
-}
-:::
+### Questions Before I Implement
 
-:::verify:verify-query
-{
-  "id": "check-api-handler-logs-table",
-  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
-}
-:::
+1. **File location** — Can you confirm the component file for the hero search with the "¿A dónde quieres ir?" field? I'd guess `src/components/HeroSearch.tsx` or it's inline in `src/pages/Index.tsx`. Referenced files (`DestinationsByCountry.tsx`, `PopularDestinations.tsx`, `DestinationsPage.tsx`) are the *destinations listing* pages — not the search dropdown. Which file should I edit for the dropdown?
+2. **Destinations list** — Do you want me to **expand** the destinations list (e.g. add full Alps, Rockies, Japan, Andes) organized by country, or **keep the exact same list** currently shown and just reorganize it by country?
+3. **Behavior preference** — Should clicking a country header collapse/expand that country's group (accordion style), or should all groups always be open and the user just scrolls through them? I'd recommend **always open + sticky headers** for a smoother feel, but open to accordion if you prefer.
 
-### Preguntas críticas para ti
-
-Mientras corren las verificaciones, necesito que confirmes dos cosas:
-
-- **¿Registraste Hotelbeds en `/admin/integrations` de Valinor?** La memoria del proyecto dice "Configured Hotelbeds in the integrations_registry using the auth: signature method", pero necesito confirmar que el registro está **activo** y asociado a este `project_id` (HolaSki). Si lo registraste solo a nivel global pero no para este proyecto, el `api-proxy` lo rechazará.
-- **¿Tenés credenciales de producción o de test?** Hotelbeds tiene dos entornos: `api.test.hotelbeds.com` (sandbox, datos limitados, pocos hoteles en Mendoza/Argentina) y `api.hotelbeds.com` (producción, requiere contrato activo). Si estás usando test, es normal que devuelva 0 resultados para Las Leñas porque el sandbox tiene inventario reducido a ciertas ciudades de Europa.
-
-### Plan de acción (una vez confirmado)
-
-Dependiendo de lo que arrojen las verificaciones:
-
-- **Si `integrations_registry` está vacío o inactivo** → hay que registrarlo en Valinor admin panel. Yo no puedo insertar ahí desde este proyecto hijo.
-- **Si está registrado pero el `api-handler` no lo invoca bien** → refactorizo `supabase/functions/api-handler/index.ts` para que use el patrón correcto `{ provider: 'hotelbeds', path: '/hotel-api/1.0/hotels', method: 'POST', body: {...} }`.
-- **Si está todo bien pero Hotelbeds devuelve vacío** → agrego logging detallado y muestro el error real en el banner (en vez del mensaje genérico de "próximamente"), más un toggle para ver la respuesta cruda en modo debug.
-- **Además, en todos los casos**: voy a cambiar el fallback para que, cuando falle Hotelbeds, muestre un error accionable ("Error: [mensaje real de la API]") en lugar del banner silencioso, así la próxima vez el problema es visible de inmediato.
-
-Esperá los resultados de las verificaciones y respondeme las dos preguntas. Con eso te armo el fix exacto.
+Once you confirm these three points, I'll implement it in a single response with all files ready to go.
