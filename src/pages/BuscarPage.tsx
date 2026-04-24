@@ -1,343 +1,273 @@
 // @ts-nocheck
 // src/pages/BuscarPage.tsx
-import { useState } from 'react';
-import { Search, Hotel, MapPin, Calendar, Users, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, MapPin, Mountain, Activity, ArrowLeft, Calendar, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { toast } from 'sonner';
+import DestinationSelect from '../components/DestinationSelect';
+import { findDestinationLabel } from '../data/destinations';
 
-interface HotelResult {
-  code: string | number;
+type Resort = {
+  id: string;
+  slug: string;
   name: string;
-  categoryName?: string;
-  destinationName?: string;
-  zoneName?: string;
-  minRate: number;
-  maxRate: number;
-  currency?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface SearchResponse {
-  hotels: HotelResult[];
-  total: number;
-  checkIn?: string;
-  checkOut?: string;
-  source?: string;
-}
-
-const MOCK_HOTELS: HotelResult[] = [
-  { code: 'mock-1', name: 'Hotel Valle Nevado (ejemplo)', categoryName: '4 ESTRELLAS', destinationName: 'Santiago', zoneName: 'Andes', minRate: 320, maxRate: 520, currency: 'USD' },
-  { code: 'mock-2', name: 'Portillo Lodge (ejemplo)', categoryName: '5 ESTRELLAS', destinationName: 'Los Andes', zoneName: 'Cordillera', minRate: 180, maxRate: 380, currency: 'USD' },
-];
-
-const formatMoney = (amount: number, currency = 'MXN') => {
-  try {
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(0)}`;
-  }
+  country: string;
+  region: string;
+  altitude_top?: number;
+  altitude_base?: number;
+  runs_total?: number;
+  lifts_total?: number;
+  image_url?: string;
+  price_level?: number;
+  description?: string;
 };
 
-const DESTINATIONS = [
-  { code: 'MEN', name: 'Mendoza / Las Leñas (AR)' },
-  { code: 'SCL', name: 'Santiago / Valle Nevado (CL)' },
-  { code: 'BAR', name: 'Bariloche (AR)' },
-  { code: 'DEN', name: 'Denver / Aspen (US)' },
-  { code: 'GVA', name: 'Ginebra / Chamonix (CH)' },
-  { code: 'INN', name: 'Innsbruck (AT)' },
+const FALLBACK_RESORTS: Resort[] = [
+  { id: '1', slug: 'cerro-catedral', name: 'Cerro Catedral', country: 'Argentina', region: 'Bariloche', altitude_top: 2180, runs_total: 120, price_level: 3, image_url: 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800' },
+  { id: '2', slug: 'las-lenas', name: 'Las Leñas', country: 'Argentina', region: 'Mendoza', altitude_top: 3430, runs_total: 29, price_level: 4, image_url: 'https://images.unsplash.com/photo-1565992441121-4367c2967103?w=800' },
+  { id: '3', slug: 'valle-nevado', name: 'Valle Nevado', country: 'Chile', region: 'Santiago', altitude_top: 3670, runs_total: 44, price_level: 4, image_url: 'https://images.unsplash.com/photo-1548873430-43d45fad8b30?w=800' },
 ];
 
 export default function BuscarPage() {
-  const [destinationCode, setDestinationCode] = useState('MEN');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [adults, setAdults] = useState(2);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<HotelResult[]>([]);
-  const [searched, setSearched] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [usingMock, setUsingMock] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!checkIn || !checkOut) {
-      toast.error('Selecciona las fechas de entrada y salida');
-      return;
+  const [resorts, setResorts] = useState<Resort[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [destFilter, setDestFilter] = useState(searchParams.get('destination') || '');
+  const [dates, setDates] = useState(searchParams.get('dates') || '');
+  const [travelers, setTravelers] = useState(searchParams.get('travelers') || '2 adultos');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      console.log('[HolaSki] Starting resorts fetch...');
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: dbError, status } = await supabase
+          .from('resorts')
+          .select('id, slug, name, country, region, altitude_top, altitude_base, runs_total, lifts_total, image_url, price_level, description')
+          .order('name', { ascending: true });
+
+        console.log('[HolaSki] Response status:', status);
+        console.log('[HolaSki] Error:', dbError);
+        console.log('[HolaSki] Data length:', data?.length ?? 0);
+
+        if (cancelled) return;
+
+        if (dbError) {
+          console.warn('[HolaSki] DB error, using fallback');
+          setResorts(FALLBACK_RESORTS);
+          setError('Mostrando destinos de ejemplo');
+        } else if (!data || data.length === 0) {
+          setResorts(FALLBACK_RESORTS);
+          setError('Mostrando destinos de ejemplo');
+        } else {
+          console.log('[HolaSki] Loaded', data.length, 'resorts. First:', data[0]?.name);
+          setResorts(data as Resort[]);
+        }
+      } catch (err) {
+        console.error('[HolaSki] Fetch exception:', err);
+        if (!cancelled) {
+          setResorts(FALLBACK_RESORTS);
+          setError('Sin conexión. Mostrando destinos de ejemplo.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    if (new Date(checkOut) <= new Date(checkIn)) {
-      toast.error('La fecha de salida debe ser posterior a la de entrada');
-      return;
-    }
 
-    setLoading(true);
-    setErrorMsg(null);
-    setRawResponse(null);
-    setUsingMock(false);
-    setSearched(true);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('api-handler', {
-        body: {
-          action: 'search-hotels',
-          destinationCode,
-          checkIn,
-          checkOut,
-          adults,
-          children: 0,
-          rooms: 1,
-          currency: 'MXN',
-          language: 'CAS',
-        },
-      });
+  const filteredResorts = useMemo(() => {
+    if (!destFilter) return resorts;
+    const label = findDestinationLabel(destFilter) || destFilter;
+    const lower = label.toLowerCase();
+    return resorts.filter(
+      (r) =>
+        r.name.toLowerCase().includes(lower) ||
+        r.country.toLowerCase().includes(lower) ||
+        r.region?.toLowerCase().includes(lower)
+    );
+  }, [resorts, destFilter]);
 
-      setRawResponse({ data, error });
-
-      if (error) {
-        const msg = (error as { message?: string }).message ?? JSON.stringify(error);
-        throw new Error(msg);
-      }
-
-      if (data && typeof data === 'object' && 'error' in data) {
-        const e = data as { error: string; detail?: string };
-        throw new Error(e.detail ?? e.error);
-      }
-
-      const typed = data as SearchResponse;
-      if (!typed?.hotels) {
-        throw new Error('Respuesta inesperada del servidor (falta campo "hotels")');
-      }
-
-      setResults(typed.hotels);
-
-      if (typed.hotels.length === 0) {
-        setErrorMsg(
-          `Hotelbeds respondió correctamente pero no hay hoteles disponibles para "${destinationCode}" entre ${checkIn} y ${checkOut}. Prueba con otro destino o fechas diferentes (el entorno de test de Hotelbeds tiene inventario limitado).`
-        );
-      }
-    } catch (e) {
-      const msg = (e as Error).message;
-      console.error('search-hotels error:', msg);
-      setErrorMsg(msg);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleNewSearch = () => {
+    const params = new URLSearchParams();
+    if (destFilter) params.set('destination', destFilter);
+    if (dates) params.set('dates', dates);
+    if (travelers) params.set('travelers', travelers);
+    setSearchParams(params);
   };
 
-  const useMockData = () => {
-    setResults(MOCK_HOTELS);
-    setUsingMock(true);
-    setErrorMsg(null);
+  const priceLabel = (lvl?: number) => {
+    if (!lvl) return '—';
+    return '$'.repeat(Math.max(1, Math.min(4, lvl)));
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white pt-32 pb-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full mb-4">
-            <Search className="w-3 h-3" /> Inventario en vivo
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black">
-            Buscar <span className="text-blue-400">hoteles</span>
-          </h1>
-          <p className="text-white/50 mt-2 text-sm">Precios en pesos mexicanos (MXN) — Hotelbeds API</p>
-        </div>
-
-        <form
-          onSubmit={handleSearch}
-          className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-3xl grid grid-cols-1 md:grid-cols-5 gap-4 mb-8"
-        >
-          <div className="md:col-span-2 space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-              <MapPin className="w-3 h-3" /> Destino
-            </label>
-            <select
-              value={destinationCode}
-              onChange={(e) => setDestinationCode(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px]"
-            >
-              {DESTINATIONS.map((d) => (
-                <option key={d.code} value={d.code} className="bg-slate-900">
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-              <Calendar className="w-3 h-3" /> Entrada
-            </label>
-            <input
-              type="date"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] text-white"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-              <Calendar className="w-3 h-3" /> Salida
-            </label>
-            <input
-              type="date"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] text-white"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-              <Users className="w-3 h-3" /> Adultos
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={8}
-              value={adults}
-              onChange={(e) => setAdults(parseInt(e.target.value) || 1)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 min-h-[44px] text-white"
-            />
-          </div>
-
-          <div className="md:col-span-5">
+    <div className="min-h-screen bg-navy-900 pt-28 pb-20 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="relative bg-navy-950/80 backdrop-blur-xl border border-white/10 rounded-3xl p-4 md:p-6 mb-10 shadow-xl">
+          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_auto] gap-3 items-end">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 block">
+                Destino
+              </label>
+              <DestinationSelect value={destFilter} onChange={setDestFilter} placeholder="Todos los destinos" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Fechas
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Julio 2025"
+                value={dates}
+                onChange={(e) => setDates(e.target.value)}
+                className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none min-h-[48px]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1">
+                <Users className="w-3 h-3" /> Viajeros
+              </label>
+              <select
+                value={travelers}
+                onChange={(e) => setTravelers(e.target.value)}
+                className="w-full bg-navy-900 border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-blue-500/50 focus:outline-none appearance-none cursor-pointer min-h-[48px]"
+              >
+                <option>1 adulto</option>
+                <option>2 adultos</option>
+                <option>3 adultos</option>
+                <option>4 adultos</option>
+                <option>Familia (2+2)</option>
+              </select>
+            </div>
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-4 rounded-xl font-bold transition-all min-h-[48px] flex items-center justify-center gap-2"
+              onClick={handleNewSearch}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-2xl px-6 py-3 flex items-center justify-center gap-2 transition-all min-h-[48px]"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Buscando en Hotelbeds...
-                </>
-              ) : (
-                <>
-                  <Search className="w-5 h-5" /> Buscar hoteles
-                </>
-              )}
+              <Search className="w-5 h-5" />
+              <span>Buscar</span>
             </button>
           </div>
-        </form>
+          <div className="mt-3 text-sm text-slate-400">
+            {travelers} • {filteredResorts.length} {filteredResorts.length === 1 ? 'resultado' : 'resultados'}
+          </div>
+        </div>
 
-        {errorMsg && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 mb-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-red-300 mb-1">No se pudo obtener inventario en vivo</h3>
-                <p className="text-sm text-red-200/80 break-words mb-3">{errorMsg}</p>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowDebug((v) => !v)}
-                    className="text-xs font-bold bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5"
-                  >
-                    {showDebug ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {showDebug ? 'Ocultar' : 'Ver'} detalles técnicos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={useMockData}
-                    className="text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg"
-                  >
-                    Usar datos de ejemplo
-                  </button>
-                </div>
-
-                {showDebug && rawResponse !== null && (
-                  <pre className="mt-4 text-[11px] bg-black/60 border border-white/10 rounded-lg p-3 overflow-x-auto max-h-64 text-white/70">
-                    {JSON.stringify(rawResponse, null, 2)}
-                  </pre>
-                )}
-
-                {errorMsg.includes('hotelbeds_not_registered') && (
-                  <div className="mt-4 text-xs bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-200">
-                    <strong>Acción requerida:</strong> El administrador debe abrir el panel de
-                    Valinor en <code className="bg-black/40 px-1 rounded">/admin/integrations</code> y
-                    registrar el proveedor <code className="bg-black/40 px-1 rounded">hotelbeds</code> con{' '}
-                    <code className="bg-black/40 px-1 rounded">auth_type=signature</code>,
-                    api_key y secret.
-                  </div>
-                )}
-              </div>
-            </div>
+        {error && !loading && (
+          <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-sm">
+            ⚠ {error}
           </div>
         )}
 
-        {usingMock && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <Info className="w-4 h-4 text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-200">
-              Mostrando <strong>datos de ejemplo</strong> (no es inventario real). Estos precios son ilustrativos.
-            </p>
-          </div>
-        )}
-
-        {!errorMsg && searched && !loading && results.length > 0 && !usingMock && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <Info className="w-4 h-4 text-emerald-400 shrink-0" />
-            <p className="text-sm text-emerald-200">
-              <strong>{results.length}</strong> hoteles encontrados vía Hotelbeds (inventario en vivo).
-            </p>
-          </div>
-        )}
-
-        {results.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2">
-            {results.map((h) => (
-              <div
-                key={h.code}
-                className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-blue-500/40 transition-all"
-              >
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-lg break-words flex items-center gap-2">
-                      <Hotel className="w-4 h-4 text-blue-400 shrink-0" />
-                      <span className="truncate">{h.name}</span>
-                    </h3>
-                    {h.categoryName && (
-                      <p className="text-xs text-white/40 uppercase tracking-wider mt-1">{h.categoryName}</p>
-                    )}
-                  </div>
-                </div>
-
-                {(h.destinationName || h.zoneName) && (
-                  <p className="text-sm text-white/60 flex items-center gap-1.5 mb-4">
-                    <MapPin className="w-3 h-3" />
-                    {[h.zoneName, h.destinationName].filter(Boolean).join(', ')}
-                  </p>
-                )}
-
-                <div className="pt-4 border-t border-white/5 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Desde</p>
-                    <p className="text-2xl font-black text-blue-400">
-                      {formatMoney(h.minRate, h.currency ?? 'MXN')}
-                    </p>
-                  </div>
-                  <button className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-xl font-bold text-sm">
-                    Ver detalles
-                  </button>
-                </div>
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-navy-950/50 border border-white/5 rounded-3xl p-6">
+                <div className="h-6 w-3/4 bg-white/5 rounded animate-pulse mb-3" />
+                <div className="h-4 w-full bg-white/5 rounded animate-pulse mb-2" />
+                <div className="h-4 w-2/3 bg-white/5 rounded animate-pulse mb-6" />
+                <div className="h-10 w-full bg-white/5 rounded-xl animate-pulse" />
               </div>
             ))}
           </div>
         )}
 
-        {searched && !loading && !errorMsg && results.length === 0 && !usingMock && (
-          <div className="text-center py-12 text-white/40">
-            <Hotel className="w-12 h-12 mx-auto mb-4 opacity-40" />
-            <p>No se encontraron hoteles para estos criterios.</p>
+        {!loading && filteredResorts.length === 0 && (
+          <div className="text-center py-20">
+            <Mountain className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-black text-white mb-2 uppercase">Sin resultados</h2>
+            <p className="text-slate-400 mb-6">No encontramos destinos que coincidan con tu búsqueda.</p>
+            <button
+              onClick={() => setDestFilter('')}
+              className="text-blue-400 hover:text-blue-300 font-bold inline-flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" /> Ver todos los destinos
+            </button>
           </div>
         )}
+
+        {!loading && filteredResorts.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredResorts.map((resort) => (
+              <button
+                key={resort.id}
+                onClick={() => navigate(`/resort/${resort.slug}`)}
+                className="group bg-navy-950/50 border border-white/10 rounded-3xl overflow-hidden text-left hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-600/10 transition-all duration-300"
+              >
+                <div className="relative aspect-video overflow-hidden bg-navy-900">
+                  {resort.image_url ? (
+                    <img
+                      src={resort.image_url}
+                      alt={resort.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=800';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Mountain className="w-12 h-12 text-slate-700" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3 bg-navy-950/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-blue-300">
+                    {priceLabel(resort.price_level)}
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight truncate">
+                      {resort.name}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-slate-400 mb-4">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">
+                      {resort.region ? `${resort.region}, ` : ''}
+                      {resort.country}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {resort.altitude_top && (
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Mountain className="w-3.5 h-3.5 text-blue-400" />
+                        <span>{resort.altitude_top}m</span>
+                      </div>
+                    )}
+                    {resort.runs_total && (
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Activity className="w-3.5 h-3.5 text-blue-400" />
+                        <span>{resort.runs_total} pistas</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="text-center mt-12">
+          <button
+            onClick={() => navigate('/')}
+            className="text-slate-400 hover:text-white font-bold inline-flex items-center gap-2 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Nueva búsqueda
+          </button>
+        </div>
       </div>
     </div>
   );
