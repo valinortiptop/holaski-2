@@ -1,89 +1,109 @@
+// @ts-nocheck
 // src/components/Hero.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, MapPin, Calendar, Users, ArrowRight } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Snowflake } from 'lucide-react';
+import DestinationSelect from './DestinationSelect';
+import { findDestinationLabel } from '../data/destinations';
 
 export default function Hero() {
-  const [destination, setDestination] = useState('');
   const navigate = useNavigate();
+  const [destination, setDestination] = useState('');
+  const [dates, setDates] = useState('');
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate(`/buscar?destination=${encodeURIComponent(destination)}`);
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (destination) params.set('destination', destination);
+    if (dates) params.set('dates', dates);
+    navigate(`/planear-viaje?${params.toString()}`);
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center pt-20">
-      {/* Background Image with Overlay */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-navy-900">
+      {/* Background */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=1600&q=80" 
-          alt="Ski Resort" 
-          className="w-full h-full object-cover"
+        <img
+          src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=1920&q=80"
+          alt="Ski mountain"
+          className="w-full h-full object-cover opacity-40"
+          loading="eager"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0B1628]/40 via-[#0B1628]/60 to-[#0B1628]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/70 to-navy-900" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
-        <div className="inline-flex items-center gap-2 bg-blue-500/20 backdrop-blur-md border border-blue-400/30 rounded-full px-4 py-2 text-blue-300 text-sm font-medium mb-8 animate-fade-up">
-          <Sparkles className="w-4 h-4" />
-          Tu próxima aventura en la nieve comienza aquí
+      {/* Content */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 pt-32 pb-20 w-full">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-full px-4 py-2 mb-6">
+            <Sparkles className="w-4 h-4 text-blue-400" />
+            <span className="text-blue-300 text-sm font-bold uppercase tracking-widest">Planifica con IA</span>
+          </div>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 uppercase tracking-tighter leading-none">
+            AVENTURA EN NIEVE
+            <br />
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              A TU MEDIDA
+            </span>
+          </h1>
+          <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Del Bariloche a los Alpes. Encuentra tu próxima experiencia en la nieve con expertos que saben.
+          </p>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-[1.1] animate-fade-up" style={{ animationDelay: '0.1s' }}>
-          Descubre los Mejores <br />
-          Destinos de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Esquí</span> del Mundo
-        </h1>
+        {/* Search Card — NOTE: NO overflow-hidden on this card, relative positioning for dropdown */}
+        <div className="relative bg-navy-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_auto] gap-4 items-end">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-1.5">
+                <Snowflake className="w-3 h-3" /> Destino
+              </label>
+              <DestinationSelect
+                value={destination}
+                onChange={setDestination}
+                placeholder="¿A dónde quieres ir?"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-blue-400">
+                Fechas
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Julio 2025"
+                value={dates}
+                onChange={(e) => setDates(e.target.value)}
+                className="w-full bg-navy-900 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[56px]"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-2xl px-8 py-4 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-xl shadow-blue-600/30 min-h-[56px]"
+            >
+              <Search className="w-5 h-5" />
+              <span className="hidden md:inline">Buscar</span>
+              <ArrowRight className="w-5 h-5 md:hidden" />
+            </button>
+          </div>
 
-        <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-12 leading-relaxed animate-fade-up" style={{ animationDelay: '0.2s' }}>
-          Paquetes exclusivos, resorts de lujo y experiencias diseñadas a tu medida en los Alpes, las Rocallosas y más.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-up" style={{ animationDelay: '0.3s' }}>
-          <button onClick={() => navigate('/planear')} className="bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-600/30">
-            Planear Mi Viaje
-          </button>
-          <button onClick={() => navigate('/destinos')} className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 px-8 py-4 rounded-2xl font-bold text-lg transition-all">
-            Ver Destinos
-          </button>
+          {destination && (
+            <div className="mt-4 pt-4 border-t border-white/5 text-sm text-slate-400">
+              Destino seleccionado: <span className="text-blue-400 font-bold">{findDestinationLabel(destination)}</span>
+            </div>
+          )}
         </div>
 
-        {/* Search Bar Glassmorphism */}
-        <div className="max-w-5xl mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-4 md:p-2 animate-fade-up shadow-2xl" style={{ animationDelay: '0.4s' }}>
-          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
-            <div className="relative flex items-center px-6 py-3 border-b md:border-b-0 md:border-r border-white/10 group">
-              <MapPin className="w-5 h-5 text-blue-400 mr-3" />
-              <div className="text-left flex-1">
-                <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Destino</label>
-                <input 
-                  type="text" 
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="¿A dónde quieres ir?" 
-                  className="bg-transparent border-none p-0 text-sm focus:ring-0 text-white placeholder-gray-500 w-full"
-                />
-              </div>
+        {/* Quick stats */}
+        <div className="grid grid-cols-3 gap-4 md:gap-8 mt-12 max-w-3xl mx-auto">
+          {[
+            { n: '40+', l: 'Destinos' },
+            { n: '4.9★', l: 'Calificación' },
+            { n: '1000+', l: 'Viajeros' },
+          ].map((stat, i) => (
+            <div key={i} className="text-center">
+              <div className="text-3xl md:text-4xl font-black text-white">{stat.n}</div>
+              <div className="text-xs md:text-sm text-slate-400 uppercase tracking-widest mt-1">{stat.l}</div>
             </div>
-            <div className="relative flex items-center px-6 py-3 border-b md:border-b-0 md:border-r border-white/10">
-              <Calendar className="w-5 h-5 text-blue-400 mr-3" />
-              <div className="text-left">
-                <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Fecha</label>
-                <div className="text-sm text-gray-300">Seleccionar fecha</div>
-              </div>
-            </div>
-            <div className="relative flex items-center px-6 py-3 border-b md:border-b-0 md:border-r border-white/10">
-              <Users className="w-5 h-5 text-blue-400 mr-3" />
-              <div className="text-left">
-                <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Viajeros</label>
-                <div className="text-sm text-gray-300">2 Adultos</div>
-              </div>
-            </div>
-            <div className="p-2">
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 py-4 px-6 rounded-3xl font-bold flex items-center justify-center gap-2 transition-all">
-                <Search className="w-5 h-5" /> Buscar
-              </button>
-            </div>
-          </form>
+          ))}
         </div>
       </div>
     </section>

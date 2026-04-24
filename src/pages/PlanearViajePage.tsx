@@ -1,13 +1,16 @@
 // @ts-nocheck
 // src/pages/PlanearViajePage.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Send, Calendar, Users, Snowflake, CheckCircle2, DollarSign, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import DestinationSelect from '../components/DestinationSelect';
 import { findDestinationLabel } from '../data/destinations';
-import '../styles/scrollbar.css';
 
 export default function PlanearViajePage() {
+  console.log('[PlanearViajePage] mounting');
+
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,6 +25,19 @@ export default function PlanearViajePage() {
     email: '',
     message: ''
   });
+
+  // Prefill from URL params (coming from hero search)
+  useEffect(() => {
+    const urlDest = searchParams.get('destination');
+    const urlDates = searchParams.get('dates');
+    if (urlDest || urlDates) {
+      setFormData((prev) => ({
+        ...prev,
+        destination: urlDest || prev.destination,
+        dates: urlDates || prev.dates,
+      }));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +59,7 @@ export default function PlanearViajePage() {
       if (error) throw error;
       setSubmitted(true);
     } catch (err) {
-      console.error(err);
+      console.error('[PlanearViajePage] submit error:', err);
       alert('Error al enviar la solicitud. Por favor intenta de nuevo.');
     } finally {
       setLoading(false);
@@ -90,9 +106,9 @@ export default function PlanearViajePage() {
 
         <form onSubmit={handleSubmit} className="bg-navy-950/50 backdrop-blur-xl border border-white/5 p-6 md:p-12 rounded-[2.5rem] shadow-2xl">
           {step === 1 && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4 relative">
+                <div className="space-y-4">
                   <label className="text-white font-bold mb-2 block">
                     ¿A dónde quieres ir?
                   </label>
@@ -100,7 +116,6 @@ export default function PlanearViajePage() {
                     value={formData.destination}
                     onChange={(val) => setFormData({ ...formData, destination: val })}
                     placeholder="Selecciona un destino"
-                    required
                   />
                 </div>
 
@@ -130,7 +145,7 @@ export default function PlanearViajePage() {
           )}
 
           {step === 2 && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <label className="flex items-center gap-2 text-white font-bold mb-2">
@@ -142,7 +157,7 @@ export default function PlanearViajePage() {
                       min="1"
                       placeholder="Adultos"
                       value={formData.adults}
-                      onChange={(e) => setFormData({ ...formData, adults: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, adults: parseInt(e.target.value) || 1 })}
                       className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none min-h-[56px]"
                     />
                     <input
@@ -150,7 +165,7 @@ export default function PlanearViajePage() {
                       min="0"
                       placeholder="Niños"
                       value={formData.children}
-                      onChange={(e) => setFormData({ ...formData, children: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, children: parseInt(e.target.value) || 0 })}
                       className="w-full bg-navy-900 border border-white/10 rounded-2xl px-6 py-5 text-white outline-none min-h-[56px]"
                     />
                   </div>
@@ -215,7 +230,7 @@ export default function PlanearViajePage() {
           )}
 
           {step === 3 && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input
                   type="text"

@@ -1,50 +1,6 @@
-\n?/g, "").trim();
-        results = JSON.parse(cleaned);
-      } catch { results = []; }
-      return new Response(JSON.stringify({ results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "ai-chat") {
-      const { messages } = params;
-      const res = await fetch(PROXY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
-        body: JSON.stringify({
-          provider: "openai",
-          endpoint: "/v1/chat/completions",
-          payload: {
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: "Eres el asistente AI de HolaSki, experto en viajes de esquí. Responde SIEMPRE en español. Sé amigable y entusiasta. Ayuda a planificar viajes de esquí perfectos. Sugiere destinos con precios estimados en USD." },
-              ...messages
-            ],
-            temperature: 0.7
-          },
-        }),
-      });
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content || "Lo siento, hubo un error. Intenta de nuevo.";
-      return new Response(JSON.stringify({ message: content }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "ai-resort-info") {
-      const { resortName, country } = params;
-      const prompt = `Dame información detallada del resort de esquí ${resortName} en ${country}. Responde SOLO un JSON: {"elevation_top":"X,XXXm","elevation_base":"X,XXXm","total_runs":120,"green_runs":30,"blue_runs":45,"black_runs":35,"double_black":10,"lifts":25,"terrain_acres":"5,000+","snowfall_annual":"300cm+","season":"Nov-Abr","night_skiing":true,"best_month":"Febrero","avg_temp":"-8°C","nearby_airport":"Aeropuerto (XYZ)","transfer_time":"2h","top_restaurants":["Rest1","Rest2","Rest3"],"top_activities":["Act1","Act2","Act3"],"tips":["tip1","tip2"]}. Solo JSON.`;
-      const res = await fetch(PROXY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-proxy-token": PROXY_TOKEN },
-        body: JSON.stringify({
-          provider: "openai",
-          endpoint: "/v1/chat/completions",
-          payload: { model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.5 },
-        }),
-      });
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content || "{}";
-      let info = {};
-      try {
-        const cleaned = content.replace(/
+:::verify:verify-query
+{
+  "id": "check-resorts-exist",
+  "query": "SELECT slug, name, country FROM public.resorts ORDER BY country, name LIMIT 20"
+}
+:::
